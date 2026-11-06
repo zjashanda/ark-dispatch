@@ -1,0 +1,11 @@
+{
+  "task": "为 TCL 新命令词生成语料并验证播放",
+  "device": {"model": "CSK7+HI3863", "project": "tcl"},
+  "bench": {
+    "node": "win009",
+    "os": "windows",
+    "ports": ["COM3", "COM4", "COM6"],
+    "playback_key": "VID_8765&PID_5678:9_387C0FC7_0_0000"
+  },
+  "constraints": {"hours": 2, "overnight": false, "reset_allowed": false}
+}
