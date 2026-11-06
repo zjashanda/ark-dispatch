@@ -1,0 +1,11 @@
+{
+  "task": "TCL 唤醒与命令词长稳压测 8 小时通宵",
+  "device": {"model": "CSK7+HI3863", "project": "tcl"},
+  "bench": {
+    "node": "win009",
+    "os": "windows",
+    "ports": ["COM3", "COM4", "COM6"],
+    "playback_key": "VID_8765&PID_5678:9_387C0FC7_0_0000"
+  },
+  "constraints": {"hours": 8, "overnight": true, "reset_allowed": true}
+}

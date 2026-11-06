@@ -1,0 +1,473 @@
+{
+  "version": "routing.v1",
+  "note": "方舟调度的选型规则（机器可读）。人读解释见 references/routing-rules.md。所有 skill 名必须能在 registry/skills.json 找到；tests 里有一条规则完整性用例守着。",
+  "phase_order": [
+    "access",
+    "action",
+    "material",
+    "execute",
+    "evidence"
+  ],
+  "roles": {
+    "port_map": {
+      "label": "设备接入：端口与声卡拓扑",
+      "phase": "access",
+      "keywords": [
+        "拓扑",
+        "设备树",
+        "整理成树",
+        "端口枚举"
+      ]
+    },
+    "playback": {
+      "label": "播报通道",
+      "phase": "action",
+      "keywords": [
+        "播报",
+        "播放",
+        "声卡端点",
+        "audio-list"
+      ]
+    },
+    "synth": {
+      "label": "语料合成",
+      "phase": "material",
+      "keywords": [
+        "语音合成",
+        "tts",
+        "melo",
+        "indextts",
+        "语料"
+      ]
+    },
+    "voice_test": {
+      "label": "设备执行：语音验证与压测",
+      "phase": "execute",
+      "keywords": [
+        "唤醒",
+        "命令识别",
+        "命令词",
+        "语音验证",
+        "离线语音",
+        "asr",
+        "交互探测"
+      ]
+    },
+    "burn": {
+      "label": "设备执行：烧录",
+      "phase": "execute",
+      "keywords": [
+        "烧录",
+        "烧写"
+      ]
+    },
+    "record": {
+      "label": "录音与音频取证",
+      "phase": "evidence",
+      "keywords": [
+        "录音",
+        "pcm"
+      ]
+    },
+    "evidence": {
+      "label": "证据分析",
+      "phase": "evidence",
+      "keywords": [
+        "蜂鸣",
+        "定位",
+        "证据"
+      ]
+    }
+  },
+  "task_signals": {
+    "port_map": [
+      "串口",
+      "端口",
+      "com 口",
+      "usb",
+      "设备树",
+      "拓扑"
+    ],
+    "playback": [
+      "播放",
+      "播报",
+      "放音",
+      "playback"
+    ],
+    "synth": [
+      "语音合成",
+      "合成",
+      "语料",
+      "tts",
+      "音频生成"
+    ],
+    "voice_test": [
+      "唤醒",
+      "命令词",
+      "命令识别",
+      "语音识别",
+      "语音验证",
+      "离线语音",
+      "asr",
+      "交互"
+    ],
+    "burn": [
+      "烧录",
+      "烧写",
+      "刷机",
+      "flash",
+      "burn"
+    ],
+    "record": [
+      "录音",
+      "回采",
+      "record"
+    ],
+    "evidence": [
+      "蜂鸣",
+      "取证",
+      "证据定位",
+      "音频分析"
+    ]
+  },
+  "signal_implies": {
+    "voice_test": [
+      "playback",
+      "port_map"
+    ],
+    "burn": [
+      "port_map"
+    ]
+  },
+  "stress_keywords": [
+    "压测",
+    "长稳",
+    "通宵",
+    "过夜",
+    "整夜",
+    "soak",
+    "stress"
+  ],
+  "advisory_signals": {
+    "report": {
+      "keywords": [
+        "报告",
+        "report"
+      ],
+      "skill": "generate-html-report",
+      "note": "台账写明它只是写作规范、没有生成脚本；报告由执行方按该规范组织证据，不单独作为执行步骤。"
+    }
+  },
+  "port_roles": {
+    "mideaSmoke": [
+      "log",
+      "control",
+      "flash"
+    ],
+    "cskflashtest": [
+      "log",
+      "control",
+      "flash"
+    ]
+  },
+  "dependency_steps": {
+    "listenai-play": true,
+    "lstts": true,
+    "melotts": true,
+    "lstest": false,
+    "burn_bundle": false,
+    "skill-git": false,
+    "trails": false,
+    "skill-creator": false,
+    "listenai-laid-installer": false
+  },
+  "supersedes": {
+    "listenai-laid-installer": "listenai-play",
+    "polaris-device-validation": "Polaris"
+  },
+  "preconditions": {
+    "input": [
+      "设备已上电，且除本计划外没有会话占用被测设备",
+      "执行机可以隐藏窗口、非交互地运行命令；需要交互授权的命令不进入计划"
+    ],
+    "port_map": [
+      "端口 {ports} 全部出现在 usb-tree 输出中，且没有被其他进程占用"
+    ],
+    "playback": [
+      "playback_key {playback_key} 在 audio-list --direction Render 输出中唯一命中；不得回退默认声卡"
+    ],
+    "synth": [
+      "lstts/IndexTTS 服务可访问，LSTTS_TTS_TOKEN 只从环境变量读取",
+      "合成产物写入 result/audio_regen/<日期>/，不覆盖 skill 内置语料"
+    ],
+    "voice_test": [
+      "被测设备 profile 的串口（TCL 默认 COM20/COM22 @921600）与台架实际端口一致",
+      "先跑无硬件 preflight，再跑硬件 preflight，通过后才允许正式轮次"
+    ],
+    "burn": [
+      "固件包已按 skill 要求放在 fw/ 下，并与 config/firmware-manifest.json 的 SHA-256 一致",
+      "烧录前先跑 dry-run；烧录口由烧录工具独占"
+    ],
+    "record": [
+      "录音声卡按 Host API 显式选择；端点不存在或不唯一时判 BLOCKED，不回退默认设备"
+    ],
+    "evidence": [
+      "原始音频/日志先落盘再做分析，结论必须能指回文件路径与哈希"
+    ]
+  },
+  "long_run_preconditions": [
+    "结果目录所在磁盘剩余空间 ≥ 10GiB，日志按轮次落盘并开启轮转",
+    "复位通道已确认可用（TCL 为 uut-switch1），复位动作写入 reset_log.jsonl",
+    "无人值守期间有人可联系的升级路径已确认；无人可联系时不得开启通宵压测"
+  ],
+  "stop_conditions": [
+    "出现 STOP 文件：在安全边界停止并保留结果目录（按 skill 约定退出码 3）",
+    "panic / crash / 非预期 reboot / watchdog reset / assert / 串口断流：按 sticky failure 停止并保留现场",
+    "连续崩溃 ≥3 次/30min：停止，不继续下一轮",
+    "串口 180s 无新增有效行且进度文件不再增长：判 BLOCKED 并停止",
+    "同一断言连续 2 轮失败：停止并归因，不重试到掩盖问题",
+    "证据无法可靠写入（磁盘满、权限错、日志被截断）：立即停止"
+  ],
+  "long_run_stop_conditions": [
+    "连续 2 次巡检（间隔 ≥60min）轮次/CSV 零增长：停止并判 BLOCKED",
+    "磁盘剩余 < 10GiB：停止",
+    "TTS/云端/凭据连续失败 ≥3 次：停止，不静默降级到其他通道",
+    "累计运行达到 constraints.hours 上限：正常收尾停止，不越界"
+  ],
+  "patrol": [
+    "每 ≤60min 检查 progress.json 与 rounds.csv 是否持续增长",
+    "每 ≤60min 检查 task.log / errors.log 中的 sticky failure 与串口断流",
+    "每 ≤60min 检查磁盘剩余空间与 serial_logs 体积增长",
+    "每 8 轮归档一次 serial_logs 与 summary 快照，避免长跑证据被后续覆盖",
+    "巡检结论写入 plan.md（或调用方工作区台账），只写事实与时间点"
+  ],
+  "steps": {
+    "usb-tree": [
+      {
+        "phase": "access",
+        "label": "枚举 USB 拓扑与声卡端点",
+        "cmd": "& \"{skill_dir}/scripts/usbTree-cli.exe\" --all --format detail --out {result_root}/preflight/usb-tree.txt",
+        "precheck": [
+          "Windows 台架已登录；不存在需要现场确认的弹窗",
+          "确认本计划是唯一使用串口的会话"
+        ],
+        "gate": "端口 {ports} 全部出现在板卡树中且未被其他进程占用；若本任务涉及播报，确认该音频端点与串口属于同一块板卡",
+        "on_fail": "stop",
+        "rollback": "只读枚举，无副作用；不修改驱动、设备实例或串口状态",
+        "evidence": "preflight/usb-tree.txt"
+      }
+    ],
+    "listenai-play": [
+      {
+        "phase": "action",
+        "label": "列出 Render 端点并确认 Key 唯一",
+        "cmd": "python \"{skill_dir}/scripts/listenai_play.py\" audio-list --direction Render --json",
+        "precheck": [
+          "已确认被测设备上电，避免把断电误判成音频路由失败"
+        ],
+        "gate": "playback_key {playback_key} 在 Render 列表唯一命中；存在多个 ListenAI 端点时必须显式指定 Key",
+        "on_fail": "stop",
+        "rollback": "只读查询，无写入；不修改系统默认声卡",
+        "evidence": "preflight/render-endpoints.json"
+      },
+      {
+        "phase": "action",
+        "label": "预检 Key 可播放",
+        "cmd": "python \"{skill_dir}/scripts/listenai_play.py\" probe --device-key \"{playback_key}\"",
+        "precheck": [
+          "Key 来自上一步本次查询结果，不使用历史缓存 Key"
+        ],
+        "gate": "probe 成功且后端确定；找不到设备或匹配歧义即停止",
+        "on_fail": "stop",
+        "rollback": "无写入；修正 Key 后重跑，不回退默认设备",
+        "evidence": "task.log 中的 probe 结果"
+      }
+    ],
+    "lstts": [
+      {
+        "phase": "material",
+        "label": "合成预检（preview）",
+        "cmd": "python \"{skill_dir}/scripts/synthesize.py\" --job {result_root}/tts.job.json --preview",
+        "precheck": [
+          "按 lstts 的 --job 合同准备 tts.job.json，token 只走环境变量",
+          "确认真实音色名与情感参考音频存在"
+        ],
+        "gate": "preview 输出的条目数与待合成文本条数一致，退出码 0",
+        "on_fail": "stop",
+        "rollback": "preview 不落正式产物；不修改 job 之外的任何文件",
+        "evidence": "task.log 中的 preview 事件流"
+      },
+      {
+        "phase": "material",
+        "label": "正式合成并校验产物",
+        "cmd": "python \"{skill_dir}/scripts/synthesize.py\" --job {result_root}/tts.job.json",
+        "precheck": [
+          "preview 已通过且 job 未再改动"
+        ],
+        "gate": "退出码 0，产物为 16kHz/单声道/16bit，条目与 job 一一对应",
+        "on_fail": "stop",
+        "rollback": "产物写入 result/audio_regen/<日期>/，不覆盖内置语料；失败可按 job 重跑",
+        "evidence": "result/audio_regen/<日期>/ 与 complete 事件"
+      }
+    ],
+    "tcl-test-sub": [
+      {
+        "phase": "execute",
+        "label": "无硬件 preflight",
+        "cmd": "python -u \"{skill_dir}/scripts/tcl_test_sub.py\" preflight --mode all",
+        "precheck": [
+          "依赖已安装（pip install -r requirements.txt）"
+        ],
+        "gate": "脚本、依赖、词表、音频 manifest 自检全部通过",
+        "on_fail": "stop",
+        "rollback": "无硬件副作用，无需回滚",
+        "evidence": "preflight 输出"
+      },
+      {
+        "phase": "execute",
+        "label": "硬件 preflight",
+        "cmd": "python -u \"{skill_dir}/scripts/tcl_test_sub.py\" preflight --hardware",
+        "precheck": [
+          "设备已上电；串口未被其他程序占用"
+        ],
+        "gate": "COM20/COM22 可打开、指定声卡唯一命中、复位通道状态正常",
+        "on_fail": "stop",
+        "rollback": "只读检查；串口被占用时判 BLOCKED，不关闭用户程序",
+        "evidence": "task.log 中的硬件 preflight 记录"
+      },
+      {
+        "phase": "execute",
+        "label": "3 轮 smoke",
+        "cmd": "python -u \"{skill_dir}/scripts/tcl_test_sub.py\" run wake-recognition -- --rounds 3 --interval-mode fixed --fixed-interval-s 2 --wake-command-delay-mode fixed --fixed-wake-command-delay-s 1.6 --boundary-ratio 0",
+        "precheck": [
+          "preflight --mode all 与 --hardware 均通过"
+        ],
+        "gate": "3/3 轮有唤醒与命令识别证据，无 sticky failure；短时 PASS 只代表链路可用",
+        "on_fail": "stop",
+        "rollback": "保留 result/ 目录与串口原文；不得删日志迎合结论",
+        "evidence": "result/YYYYMMDD_HHMMSS_wake-recognition/rounds.csv 与 serial_logs/"
+      },
+      {
+        "phase": "execute",
+        "label": "正式长跑（含截止时长）",
+        "when": "long_run",
+        "cmd": "python -u \"{skill_dir}/scripts/tcl_test_sub.py\" run wake-recognition -- --rounds 100000 --duration-minutes {minutes} --interval-mode random --min-interval-s 2 --max-interval-s 10 --wake-command-delay-mode random --min-wake-command-delay-s 1 --max-wake-command-delay-s 3 --boundary-ratio 0.2 --boundary-min-s 13 --boundary-max-s 15.5",
+        "precheck": [
+          "smoke 无 sticky failure",
+          "长跑前置条件（磁盘、复位、升级路径）已确认"
+        ],
+        "gate": "轮次与 rounds.csv 持续增长；sticky failure 为 0；到时长后正常收尾并出 summary",
+        "on_fail": "stop",
+        "rollback": "在任务目录创建 STOP 文件即安全边界停止；复位只走 uut-switch1 并写 reset_log.jsonl",
+        "evidence": "rounds.csv、progress.json、serial_logs/、summary_final.md"
+      },
+      {
+        "phase": "execute",
+        "label": "正式短跑（默认 20 轮）",
+        "when": "short_run",
+        "cmd": "python -u \"{skill_dir}/scripts/tcl_test_sub.py\" run wake-recognition -- --rounds {short_rounds} --interval-mode random --min-interval-s 2 --max-interval-s 10 --wake-command-delay-mode random --min-wake-command-delay-s 1 --max-wake-command-delay-s 3 --boundary-ratio 0",
+        "precheck": [
+          "smoke 无 sticky failure"
+        ],
+        "gate": "轮次全部收尾，结果与断言可复核；失败轮次保留证据",
+        "on_fail": "stop",
+        "rollback": "创建 STOP 文件停止；保留结果目录",
+        "evidence": "rounds.csv 与 summary"
+      }
+    ],
+    "mideaSmoke": [
+      {
+        "phase": "execute",
+        "label": "语法检查",
+        "cmd": "python -m py_compile \"{skill_dir}/auto_burn.py\"",
+        "precheck": [
+          "Python 3.10+ 可用"
+        ],
+        "gate": "编译通过，无语法错误",
+        "on_fail": "stop",
+        "rollback": "只读检查，无副作用",
+        "evidence": "命令退出码"
+      },
+      {
+        "phase": "execute",
+        "label": "烧录 dry-run",
+        "cmd": "python \"{skill_dir}/auto_burn.py\" --dry-run",
+        "precheck": [
+          "固件包位于 fw/ 且包含 Firmware/CSK6/CSK6_Burn.bat 与 Uart_Burn_Tool.exe"
+        ],
+        "gate": "dry-run 解析到固件、日志口、控制口、烧录口，且不发送任何控制命令",
+        "on_fail": "stop",
+        "rollback": "dry-run 不写设备；修正固件路径或端口后重跑",
+        "evidence": "dry-run 输出"
+      },
+      {
+        "phase": "execute",
+        "label": "正式烧录并校验启动",
+        "cmd": "python \"{skill_dir}/auto_burn.py\" --log-port {log_port} --control-port {control_port} --flash-port {flash_port}",
+        "precheck": [
+          "dry-run 通过；三只端口均未被占用"
+        ],
+        "gate": "uut-burn.on 回执 → 烧录成功 → uut-burn.off → 启动日志健康、无异常重启",
+        "on_fail": "stop",
+        "rollback": "失败时保持 uut-burn.off 并断电重试；固件不符时回滚到上一版本重烧",
+        "evidence": "result/.../csk_runtime.log、summary.md、summary.json"
+      }
+    ],
+    "cskflashtest": [
+      {
+        "phase": "execute",
+        "label": "preflight",
+        "cmd": "python -u \"{skill_dir}/scripts/run.py\" --preflight",
+        "precheck": [
+          "依赖与 Uart_Burn_Tool 已就位",
+          "config/devices.json 与台架实际端口一致"
+        ],
+        "gate": "端口、固件清单、profile 正则合同全部通过",
+        "on_fail": "stop",
+        "rollback": "只读检查，无副作用",
+        "evidence": "preflight 输出"
+      },
+      {
+        "phase": "execute",
+        "label": "烧录轮次",
+        "cmd": "python -u \"{skill_dir}/scripts/run.py\" --rounds {burn_rounds}",
+        "precheck": [
+          "preflight 通过"
+        ],
+        "gate": "每轮烧录成功 + 启动日志校验通过；失败轮保留原始输出",
+        "on_fail": "stop",
+        "rollback": "创建 STOP 文件让当前轮收尾；重跑前释放串口并清理残留进程",
+        "evidence": "result/ 下的轮次 CSV、烧录工具原始输出与 CSK 连续日志"
+      }
+    ],
+    "lstest": [
+      {
+        "phase": "execute",
+        "label": "profile 预检",
+        "cmd": "python -u \"{skill_dir}/scripts/lstest.py\" preflight --profile {profile}",
+        "precheck": [
+          "项目 profile 与 fixture 已就绪"
+        ],
+        "gate": "profile 合同通过；未满足时必须返回 BLOCKED_PROFILE_CONTRACT",
+        "on_fail": "stop",
+        "rollback": "只读检查，无副作用",
+        "evidence": "preflight 输出"
+      }
+    ],
+    "melotts": [
+      {
+        "phase": "material",
+        "label": "离线批量合成",
+        "cmd": "\"{skill_dir}/tts\" --language ZH --speaker ZH --text {text_file} --out-dir {result_root}/audio_offline --concurrency 4 --speed 1.0",
+        "precheck": [
+          "运行在 Linux x86_64 + Python 3.12；模型目录 models/ZH 存在",
+          "文本文件每行一条，UTF-8"
+        ],
+        "gate": "输出 WAV 为 16000Hz/单声道/16bit，条数与文本行数一致",
+        "on_fail": "stop",
+        "rollback": "产物只能写 result/ 下的新目录，不覆盖内置模型与 outputs/",
+        "evidence": "result/.../audio_offline/*.wav"
+      }
+    ]
+  }
+}

@@ -1,0 +1,1023 @@
+[
+  {
+    "name": "NoahsArk",
+    "repo": "zjashanda/NoahsArk",
+    "layer": "orchestration",
+    "status": "active",
+    "capability": "AI 测试平台方案与规格仓库：控制面/节点分工、会话编排、证据 manifest、租约与 C1-C7 门禁设计。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "lstest"
+    ],
+    "depends_pkgs": [
+      "无"
+    ],
+    "entry": "docs/VERSIONING.md",
+    "reuse": "high",
+    "scope_note": "纯设计与规格，不能直接执行任何测试；README 明写后端尚未实现，落地前不能当作运行能力引用。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "Polaris",
+    "repo": "zjashanda/Polaris",
+    "layer": "capability",
+    "status": "active",
+    "capability": "语音设备真机 BDD 验证框架：Cucumber 用例 + 固定 runner + Event Runtime 事件断言，输出 PASS/FAIL/BLOCKED/TIMING_AMBIGUOUS。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "日志串口",
+      "控制串口",
+      "播报声卡",
+      "录音声卡"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "待核验（仓库无 requirements.txt）"
+    ],
+    "entry": "satellite/cucumber-agent-testing/scripts/run_task.py",
+    "reuse": "high",
+    "scope_note": "框架通用，换设备/项目需新增 adapter、step/action registry 与本机 polaris.local.json；依赖本机串口与声卡，仓库无 CI。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "Trisolaris",
+    "repo": "zjashanda/Trisolaris",
+    "layer": "capability",
+    "status": "legacy",
+    "capability": "离线语音多项目验证：需求→方案/用例→烧录→播放→串口证据→断言，内置小度风扇与好太太晾衣机的项目资产和验证池。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "CSK5062-xiaodu-fan",
+      "CSK3022-htt-clothes-airer"
+    ],
+    "hardware": [
+      "烧录串口",
+      "日志串口",
+      "控制串口",
+      "播报声卡"
+    ],
+    "depends_skills": [
+      "burn_bundle"
+    ],
+    "depends_pkgs": [
+      "待核验（仓库无 requirements.txt）"
+    ],
+    "entry": "tools/suite/run_formal_suite.py",
+    "reuse": "medium",
+    "scope_note": "换新项目可复用验证池与 run_formal_suite 流程，但必须补项目 profile、需求目录和烧录封装；内置断言只对两个既有项目成立。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "a4m-Jenkins",
+    "repo": "zjashanda/a4m-Jenkins",
+    "layer": "tool",
+    "status": "archived",
+    "capability": "Autodesk Mac 团队 Jenkins 自动化资产：触发 UI/LISP/ARX/Benchmark 测试并收集报告，与语音测试无关。",
+    "platform": [
+      "linux"
+    ],
+    "projects": [
+      "AcadMacJenkins"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "待核验（私有仓库未采集）"
+    ],
+    "entry": "JenkinsJob/",
+    "reuse": "low",
+    "scope_note": "纯历史外部工程，与 NoahsArk 设备测试无交集，仅作归档；仓库 74MB，不下载不执行。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "arcs-aopu-test",
+    "repo": "zjashanda/arcs-aopu-test",
+    "layer": "capability",
+    "status": "legacy",
+    "capability": "奥普/ARCS 离线语音验证与压测：唤醒/ASR 串口日志验证、重启首唤醒、全词表 MP3 覆盖、阈值协议切换与整夜压测。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "ARCS-aopu"
+    ],
+    "hardware": [
+      "日志串口",
+      "播报声卡"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "pyserial",
+      "pygame"
+    ],
+    "entry": "run_aopu_combo_pressure.bat",
+    "reuse": "low",
+    "scope_note": "词表、音频和日志协议绑定奥普浴霸类设备；换型号必须换语料与日志规则，压测编排思路可借鉴。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "beep-locator",
+    "repo": "zjashanda/beep-locator",
+    "layer": "tool",
+    "status": "active",
+    "capability": "在 PCM/WAV 中定位固定频率蜂鸣（默认 1 秒响+1 秒静+1 秒响），按通道共识输出起止点文件，无需人工真值。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "无（标准库）"
+    ],
+    "entry": "scripts/locate_beep.py",
+    "reuse": "high",
+    "scope_note": "与设备无关，只要有音频文件；蜂鸣频率或节奏变化时需重新标定参考音频，不能沿用默认 1000Hz 模板。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "bootship",
+    "repo": "zjashanda/bootship",
+    "layer": "capability",
+    "status": "legacy",
+    "capability": "OBU/I2S 录音压测与音频质量分析：设备侧 tinyplay/tinycap、上下电队列、ASIO/XMOS 本地录音、空白/缺失/通道错乱检测与固件对比报告。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "OBU-bootship"
+    ],
+    "hardware": [
+      "设备串口",
+      "I2S 录音",
+      "USB 声卡",
+      "ASIO 音频接口"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "待核验（仓库无 requirements.txt）"
+    ],
+    "entry": "tools/xmosRecord/run_dual_independent_usb_record_stress.py",
+    "reuse": "medium",
+    "scope_note": "绑定 OBU/I2S 板与朝歌/创维/长虹三套方案；换板卡要换设备配置与 tinyplay/tinycap 路径，音频分析脚本可复用。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "burn_bundle",
+    "repo": "zjashanda/burn_bundle",
+    "layer": "kernel",
+    "status": "active",
+    "capability": "跨平台 UART 烧录工具的原始 payload：windows/linux 两侧原生烧录程序与启动脚本，供项目级封装调用。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "烧录串口"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "无"
+    ],
+    "entry": "windows/run_burn.bat",
+    "reuse": "high",
+    "scope_note": "纯 payload，与设备型号无关；不含项目封装脚本（run_fan_burn.*），调用方需自备 app.bin、固件与串口参数。Linux 入口为 linux/run_burn.sh。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "clearusb",
+    "repo": "zjashanda/clearusb",
+    "layer": "tool",
+    "status": "active",
+    "capability": "清理 Windows 已断开的隐藏 USB 串口与设备实例：默认预览，-Apply 才删除，保留驱动包，不碰在线设备。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "USB 串口"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "无（Windows PowerShell 5.1 + PnpDevice 模块）"
+    ],
+    "entry": "scripts/Invoke-ClearUsb.ps1",
+    "reuse": "medium",
+    "scope_note": "只适用于 Windows 10 2004+/11；换机器同样可用，但只清离线隐藏实例，不动在线设备、驱动包与蓝牙配对。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "cskflashtest",
+    "repo": "zjashanda/cskflashtest",
+    "layer": "capability",
+    "status": "active",
+    "capability": "CSK 串口烧录与烧录压测：控制口下电、进 boot、上电，Uart_Burn_Tool 烧录，退出 boot，校验启动日志并统计多轮结果。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "控制串口",
+      "CSK 烧录口",
+      "CSK 日志口"
+    ],
+    "depends_skills": [
+      "lstest"
+    ],
+    "depends_pkgs": [
+      "pyserial",
+      "edge-tts",
+      "pygame (Windows)",
+      "numpy"
+    ],
+    "entry": "scripts/run.py",
+    "reuse": "medium",
+    "scope_note": "适用于 CSK 系列且控制口能收发上下电命令、烧录口支持 Uart_Burn_Tool；非 CSK 芯片不可用。仓库内嵌一份 lstest/ 副本，与 SKILL.md “不复制 lstest”的声明矛盾。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "duya-ota-powercut",
+    "repo": "zjashanda/duya-ota-powercut",
+    "layer": "capability",
+    "status": "legacy",
+    "capability": "杜亚双设备 OTA 写入/升级随机断电压测：COM27 共享控制口、COM22/21 日志口、flash.md5 校验与逐轮留证。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "duya-OTA"
+    ],
+    "hardware": [
+      "控制串口",
+      "设备日志串口",
+      "电源控制"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "pyserial"
+    ],
+    "entry": "tools/dual_ota_powercut_stress.py",
+    "reuse": "low",
+    "scope_note": "写死 COM27/22/21、uut-switch1/2 协议与杜亚 OTA 流程；换设备不可直接用。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "fileball",
+    "repo": "zjashanda/fileball",
+    "layer": "tool",
+    "status": "active",
+    "capability": "把内网 FTP/NAS 固件 zip 转成 OTA 命令：连 Wi-Fi、FileStation 下载解压、取 OTA bin、上传 OSS、校验公开 URL 并生成 ota.set.url。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "通用",
+      "OTA 交付"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "待核验（私有仓库未采集）"
+    ],
+    "entry": "scripts/ftp_ota_to_oss.py",
+    "reuse": "medium",
+    "scope_note": "绑定内网 NAS 路径与 listenai OSS 桶；换公司或换 NAS 需改配置。私有仓库，凭据只留在本地配置。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "generate-html-report",
+    "repo": "zjashanda/generate-html-report",
+    "layer": "tool",
+    "status": "active",
+    "capability": "把日志、统计与测试结果转成结论先行的 HTML 报告：证据链、异常分类、复核口径，可另出邮件内联版。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "无"
+    ],
+    "entry": "SKILL.md",
+    "reuse": "high",
+    "scope_note": "与设备无关；它是写作规范而非生成器，没有脚本，产出质量取决于调用者是否按规范组织证据。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "line-net-monitor",
+    "repo": "zjashanda/line-net-monitor",
+    "layer": "tool",
+    "status": "active",
+    "capability": "按线路配置分段探测防火墙、光猫、电信/腾讯 DNS 与应用层 DNS，每 5 分钟统计丢包与时延并归因到内网/接入网/外网。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "防火墙",
+      "光猫"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "无（标准库 + 系统 ping.exe）"
+    ],
+    "entry": "scripts/line_net_monitor.py",
+    "reuse": "medium",
+    "scope_note": "换线路只改 config/lines.json；仅支持 Windows，只做 IPv4 丢包/时延分段归因，不能测带宽、HTTP 可用性或无线信号。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "listenai-laid-installer",
+    "repo": "zjashanda/listenai-laid-installer",
+    "layer": "tool",
+    "status": "legacy",
+    "capability": "在 PowerShell、bash、zsh profile 中安装并验证 laid 命令，Windows 附带 audio-list 端点列表与稳定 USB 标识。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "声卡",
+      "ListenAI Audio 设备"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "无"
+    ],
+    "entry": "scripts/install_laid_windows.ps1",
+    "reuse": "medium",
+    "scope_note": "与设备型号无关；能力已被 listenai-play 覆盖（超集），新项目优先用 listenai-play，本仓库仅保留轻量安装入口。",
+    "replaced_by": "listenai-play",
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "listenai-play",
+    "repo": "zjashanda/listenai-play",
+    "layer": "kernel",
+    "status": "active",
+    "capability": "声卡端点查询与播报底层：安装 laid/audio-list、按稳定 Key 或默认设备选路，支持单文件/双设备播放与多后端。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "播报声卡",
+      "USB 声卡"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "pygame-ce",
+      "sounddevice"
+    ],
+    "entry": "scripts/listenai_play.py",
+    "reuse": "high",
+    "scope_note": "与设备型号无关，只依赖声卡端点；换一台机器需要重新 install 并重新解析 Key，找不到设备或 Key 歧义时直接停止，不回退默认声卡。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "lstest",
+    "repo": "zjashanda/lstest",
+    "layer": "kernel",
+    "status": "active",
+    "capability": "跨项目设备测试验证与压测框架：profile 驱动日志发现、串口与音频证据采集、时序关联、结果校验，输出可复算的场景回执。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "控制串口",
+      "日志串口",
+      "播报声卡",
+      "录音声卡"
+    ],
+    "depends_skills": [
+      "lstts",
+      "skill-git"
+    ],
+    "depends_pkgs": [
+      "pyserial>=3.5",
+      "pygame>=2.5 (Windows)",
+      "lstts-core (git)"
+    ],
+    "entry": "scripts/lstest.py",
+    "reuse": "high",
+    "scope_note": "与设备型号解耦，换设备只需新增 project profile 与原始日志适配器，框架本身禁止写死 marker/正则；带串口+声卡即可用。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "lstts",
+    "repo": "zjashanda/lstts",
+    "layer": "kernel",
+    "status": "active",
+    "capability": "IndexTTS/IndexTTS2 语音合成：文本、表格、云端音色与克隆音色转音频，提供独立 CLI 与 lstts-core Python 包，JSONL 事件流与固定退出码。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "openpyxl",
+      "xlrd",
+      "oss2"
+    ],
+    "entry": "scripts/synthesize.py",
+    "reuse": "high",
+    "scope_note": "与设备无关，只要有网络与 IndexTTS 服务/OSS 凭据即可；离线或大批量改用 melotts。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "mars-belt",
+    "repo": "zjashanda/mars-belt",
+    "layer": "capability",
+    "status": "active",
+    "capability": "MarsPlatform 固件打包→烧录→验证的自治流程：自动决策、自动执行、自动恢复，含平台 API 校验、音频合成与报告/邮件链路。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "MarsPlatform"
+    ],
+    "hardware": [
+      "烧录串口",
+      "控制串口",
+      "播报声卡"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "待核验（仓库无 requirements.txt）"
+    ],
+    "entry": "scripts/mars_belt.py",
+    "reuse": "medium",
+    "scope_note": "绑定 MarsPlatform 平台与专用烧录工具；换一台同平台机器可用，换到普通项目不能直接用。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "mars-moon",
+    "repo": "zjashanda/mars-moon",
+    "layer": "capability",
+    "status": "legacy",
+    "capability": "把需求文档、词表 Excel、tone.h 与固件打成可迁移 bundle，生成 spec/cases/deviceInfo，执行 dry-run、烧录、runner 与结果归档。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "duya-curtain"
+    ],
+    "hardware": [
+      "烧录串口",
+      "日志串口",
+      "播报声卡"
+    ],
+    "depends_skills": [
+      "burn_bundle",
+      "listenai-play",
+      "listenai-laid-installer"
+    ],
+    "depends_pkgs": [
+      "待核验（仓库无 requirements.txt）"
+    ],
+    "entry": "scripts/mars_moon_pipeline.py",
+    "reuse": "medium",
+    "scope_note": "bundle 面向杜亚窗帘类离线语音项目；换项目要换需求、词表、tone.h 与 COM 配置，流程可复用。README 布局清单残留 .git/ 条目，本地打包需清理。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "melotts",
+    "repo": "zjashanda/melotts",
+    "layer": "tool",
+    "status": "active",
+    "capability": "自包含本地 MeloTTS 中英文语音合成：内置模型、虚拟环境与 NLTK 数据，离线批量输出 WAV。",
+    "platform": [
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "torch（随 .venv 打包）",
+      "numpy（随 .venv 打包）"
+    ],
+    "entry": "scripts/synth.py",
+    "reuse": "high",
+    "scope_note": "与设备无关、离线可用，面向 Linux x86_64 + Python 3.12；换机器需能承载约 130MB 模型，且 .venv/ 与 outputs/ 已入库。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "mideaSmoke",
+    "repo": "zjashanda/mideaSmoke",
+    "layer": "capability",
+    "status": "legacy",
+    "capability": "美的烟机/CSK6012 单点烧录与烧录后判定：uut-burn.on/off 进出烧录、Uart_Burn_Tool 烧录整包、校验启动健康与异常重启。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "CSK6012-midea-smoke"
+    ],
+    "hardware": [
+      "CSK 日志口",
+      "CSK 烧录口",
+      "设备控制口"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "pyserial"
+    ],
+    "entry": "auto_burn.py",
+    "reuse": "low",
+    "scope_note": "写死 CSK6012、uut-burn 控制协议与 COM23/27/29 默认值；换型号必须重做流程，不能直接复用。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "omni-pickup",
+    "repo": "zjashanda/omni-pickup",
+    "layer": "tool",
+    "status": "active",
+    "capability": "Windows 多 Host API 原始 PCM 录音：按索引或名称选 DirectSound/WASAPI/WDM-KS/ASIO 端点，自定义采样率、通道、位深与时长。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "录音声卡",
+      "USB 声卡",
+      "ASIO 音频接口"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "PyAudio 0.2.14",
+      "PyInstaller"
+    ],
+    "entry": "src/OmniPickup.py",
+    "reuse": "high",
+    "scope_note": "仅 Windows；换设备可用，但需按 Host API 重新选择端点。仓库内 .venv/、build/、dist/ 入库，脚本必须走随包 .venv。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "polaris-device-validation",
+    "repo": "zjashanda/polaris-device-validation",
+    "layer": "capability",
+    "status": "archived",
+    "capability": "Polaris 旧版真机验证实现（同源 Cucumber/Event Runtime），2026-06 后停更，保留为历史参照。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "日志串口",
+      "控制串口",
+      "播报声卡",
+      "录音声卡"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "待核验（仓库无 requirements.txt）"
+    ],
+    "entry": "satellite/cucumber-agent-testing/scripts/run_task.py",
+    "reuse": "low",
+    "scope_note": "已被 Polaris 取代，不应在新任务中使用；仅用于追溯 6 月前的用例与配置格式。",
+    "replaced_by": "Polaris",
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "power-on-record-check",
+    "repo": "zjashanda/power-on-record-check",
+    "layer": "capability",
+    "status": "active",
+    "capability": "上电→等录音声卡枚举→立即录音→指定声卡播报→收尾断电的多轮压测，输出轮次 CSV/JSON、串口原文与工具日志。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "控制串口",
+      "录音声卡",
+      "播报声卡"
+    ],
+    "depends_skills": [
+      "listenai-play"
+    ],
+    "depends_pkgs": [
+      "pyserial",
+      "pygame-ce"
+    ],
+    "entry": "scripts/run_power_on_record_check.py",
+    "reuse": "medium",
+    "scope_note": "换设备可用，前提是有可控电源串口且录音/播报是两张可枚举声卡；录音声卡不枚举时按 BLOCKED 处理，不静默回退默认声卡。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "qw-email-handle",
+    "repo": "zjashanda/qw-email-handle",
+    "layer": "tool",
+    "status": "active",
+    "capability": "企业邮箱收发的通用 CLI：SMTP 发信（含附件/HTML），IMAP 只读查收件箱并按发件人、主题、日期、未读状态筛选。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "待核验（私有仓库未采集）"
+    ],
+    "entry": "scripts/mailbox_tool.py",
+    "reuse": "high",
+    "scope_note": "与设备无关，只需邮箱授权码；换邮箱改配置或环境变量。私有仓库，回复与日志中不得出现授权码。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "scanpen-api-test",
+    "repo": "zjashanda/scanpen-api-test",
+    "layer": "capability",
+    "status": "legacy",
+    "capability": "ScanPen 设备 AP/CP 双串口 API 验证与压测：version、trans_start、xtts_start，按正则判定并流式落盘两侧日志。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "ScanPen"
+    ],
+    "hardware": [
+      "AP 串口",
+      "CP 串口"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "pyserial"
+    ],
+    "entry": "scripts/scanpen_api_runner.py",
+    "reuse": "low",
+    "scope_note": "命令与协议写死 ScanPen；换设备不可直接用，只能复用“双口 + 正则断言 + 流式日志”的方法。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "skill-creator",
+    "repo": "zjashanda/skill-creator",
+    "layer": "spec",
+    "status": "active",
+    "capability": "创建/更新 Codex skill 的规范与模板：目录结构、SKILL.md 写法、命名规则，以及交付前必须通过的“禁止弹窗”终端审查项。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "无"
+    ],
+    "entry": "SKILL.md",
+    "reuse": "high",
+    "scope_note": "与设备无关；只约束 skill 结构，不含任何测试能力。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "skill-git",
+    "repo": "zjashanda/skill-git",
+    "layer": "spec",
+    "status": "active",
+    "capability": "Skill 发布门禁工具：建/校验 GitHub 同名仓库、扫描凭据、dry-run 预览、diff 比对、pull 回拉与 OSS 资产归档。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "alibabacloud-oss-v2",
+      "PyYAML"
+    ],
+    "entry": "scripts/skill_git.py",
+    "reuse": "high",
+    "scope_note": "与设备无关；默认强绑 owner=zjashanda、main 分支与 SSH 别名 github-zjashanda，换账号或换 Git 托管需改配置。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "spiderbot",
+    "repo": "zjashanda/spiderbot",
+    "layer": "tool",
+    "status": "active",
+    "capability": "企业微信智能表/表格的安全读写：在线快照、备份、增删改与复核，以及讯飞线上问题数据按关键词/创建人去重迁移。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "puppeteer-core (npm)"
+    ],
+    "entry": "scripts/wecom_smartsheet_web.py",
+    "reuse": "medium",
+    "scope_note": "与设备无关，但必须使用已登录浏览器的 Web 运行时，不走 MCP/API 写入；换账号需重新登录，换表只改 URL 与字段映射。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "tcl-test-sub",
+    "repo": "zjashanda/tcl-test-sub",
+    "layer": "capability",
+    "status": "legacy",
+    "capability": "TCL 双麦空调语音验证与压测：唤醒加命令识别长稳、2s/20s 交替间隔、489 条核心命令覆盖、在线交互探测与双串口证据。",
+    "platform": [
+      "windows"
+    ],
+    "projects": [
+      "TCL-ac"
+    ],
+    "hardware": [
+      "日志串口",
+      "命令串口",
+      "播报声卡"
+    ],
+    "depends_skills": [
+      "listenai-play",
+      "trails",
+      "skill-creator"
+    ],
+    "depends_pkgs": [
+      "pyserial",
+      "openpyxl"
+    ],
+    "entry": "scripts/tcl_test_sub.py",
+    "reuse": "low",
+    "scope_note": "写死 TCL 双麦空调的串口、词表、固件行为与断言；换型号需重做词表和断言，随包 2778 条 MP3 语料可跨项目复用。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "test-plan-architect",
+    "repo": "zjashanda/test-plan-architect",
+    "layer": "spec",
+    "status": "active",
+    "capability": "把设备测试需求编译成可执行的 aitest.profilepack.v1（profile、fixture、case contract、oracle），并做预检与 B 类取证清单。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "lstest"
+    ],
+    "depends_pkgs": [
+      "无（标准库）"
+    ],
+    "entry": "scripts/validate_profilepack.py",
+    "reuse": "high",
+    "scope_note": "与设备无关，换设备只换输入需求与既有 profile；本身不碰真机、不取证，缺真实日志时必须返回 BLOCKED。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "trails",
+    "repo": "zjashanda/trails",
+    "layer": "spec",
+    "status": "active",
+    "capability": "日常脚本与测试工具的统一工程规范：单入口、结果目录、task.log、CSV/JSON、原始证据、状态判定、停止恢复与交付格式。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "skill-creator"
+    ],
+    "depends_pkgs": [
+      "无"
+    ],
+    "entry": "SKILL.md",
+    "reuse": "high",
+    "scope_note": "纯方法论，与设备无关；不产生执行结果，价值在于让不同项目的产物口径一致。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "usb-tree",
+    "repo": "zjashanda/usb-tree",
+    "layer": "tool",
+    "status": "active",
+    "capability": "按 USB 上游拓扑、PnP 父设备与 Container ID 把 Windows COM、Linux tty 串口和音频端点整理成树，提供 GUI/CLI 与按栏复制导出。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "USB Hub",
+      "多口串口板（CH344/CH348）",
+      "USB 声卡"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "无（.NET / PowerShell 内置）"
+    ],
+    "entry": "scripts/usbTree.ps1",
+    "reuse": "high",
+    "scope_note": "与设备型号无关，换板卡可直接用；GUI 仅 Windows，Linux 只提供脚本/CLI。仓库内保留 .omo/ 会话残留。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  },
+  {
+    "name": "zhsh",
+    "repo": "zjashanda/zhsh",
+    "layer": "orchestration",
+    "status": "active",
+    "capability": "局域网分布式 CLI 网关与任务调度：Dashboard、任务队列、PTY 终端桥接、Agent 上报硬件并执行任务、Beacon 一键接入。",
+    "platform": [
+      "windows",
+      "linux"
+    ],
+    "projects": [
+      "通用"
+    ],
+    "hardware": [
+      "无"
+    ],
+    "depends_skills": [
+      "无"
+    ],
+    "depends_pkgs": [
+      "待核验（私有仓库未采集）"
+    ],
+    "entry": "start_all.bat",
+    "reuse": "high",
+    "scope_note": "与设备型号无关，但强绑局域网与节点 Agent；换机器需重新安装 Agent/Beacon 并重新发现服务器。私有仓库，台账仅依据 README。",
+    "replaced_by": null,
+    "last_verified": "2026-11-06"
+  }
+]

@@ -1,0 +1,10 @@
+{
+  "task": "CSK6012 烧录并校验启动日志",
+  "device": {"model": "CSK6012", "project": "midea-smoke", "firmware": "fw/"},
+  "bench": {
+    "node": "win009",
+    "os": "windows",
+    "ports": ["COM23", "COM27", "COM29"]
+  },
+  "constraints": {"hours": 1, "overnight": false, "reset_allowed": false}
+}

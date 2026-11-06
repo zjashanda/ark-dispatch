@@ -1,0 +1,10 @@
+{
+  "task": "验证新板卡的语音唤醒与命令词",
+  "device": {"model": "未知", "project": "unknown-board"},
+  "bench": {
+    "node": "win009",
+    "os": "windows",
+    "ports": ["COM3"], "playback_key": "VID_8765&PID_5678:8_2A847557_0_0000"
+  },
+  "constraints": {"hours": 2, "overnight": false, "reset_allowed": false}
+}
