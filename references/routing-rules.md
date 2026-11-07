@@ -112,6 +112,8 @@
 - `when: long_run` / `when: short_run` 控制长短跑二选一，避免通宵任务里混进 20 轮短跑。
 - 命令参数来自对应 skill 的 `SKILL.md`（2026-11-07 采集），不自行发明开关；台账只给入口、没登记模板的 skill 会标 `cmd_verified: false`。
 - 占位符缺值时不猜：写成 `<未提供:key>`，同时把置信度压到最多 `medium` 并列入 `needs_confirmation`。
+- `gate` / `precheck` 的端口用 `{effective_ports}`：请求 `bench.ports` → `routing.port_defaults` → “来源未知”，渲染结果带来源。**请求给了端口就绝不回落默认值**（NOAH-20 的回归点：gate 曾写死 `COM20/COM22`，而台架是 `COM3/COM4/COM6`）。
+- `constraints.reset_allowed` 不生成独立复位步骤，只在 `reset_policy` 里声明允许/禁止与证据要求；`verified=false` 的复位通道（如 `uut-switch1`）只登记、不自动执行。口径见 [plan-schema.md](plan-schema.md) §6。
 
 新增模板的步骤：
 

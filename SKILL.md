@@ -79,6 +79,8 @@ python scripts/dispatch.py plan \
 
 - **不执行任何设备动作**：只读本地台账与知识库，输出 JSON/文本，不碰串口、声卡、固件。
 - 计划里每个 skill 必须能在台账查到且不是 `archived`；查不到不选。`check` 子命令与单测都会拦。
+- 计划里的端口必须可溯源：请求 `bench.ports` 优先，其次 skill 默认值；回落默认值或来源未知时，计划降 `medium` 并要求核对，不得让执行方去开不存在的串口。
+- 调度层不执行复位：`reset_allowed=true` 只表示允许被选中 skill 在恢复流程里复位；未验证的复位命令只登记，不自动执行。
 - 选择理由必须可复核：命中哪个台账字段、哪条知识条目，都写在 `basis` / `excluded[].reason` / `sources` 里。
 - 没有把握就 `confidence: low` 并列出 `needs_confirmation`，不硬选；设备型号未知时尤其如此。
 - 知识库只读：不回写命中计数、不改条目、不把执行结果写进台账。
