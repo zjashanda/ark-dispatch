@@ -196,6 +196,98 @@ class GoldenCase5UnknownDevice(unittest.TestCase):
         self.assertEqual(dispatch.validate_plan(self.plan, REGISTRY, RULES), [])
 
 
+class GatePorts(unittest.TestCase):
+    """gate 的端口必须来自请求 bench.ports，不能被 skill 默认值覆盖。
+
+    回归 NOAH-20：请求 ports=COM3/COM4/COM6，gate 却写死 tcl-test-sub 的 COM20/COM22。
+    """
+
+    @staticmethod
+    def hardware_preflight(plan: dict) -> dict:
+        steps = [
+            step
+            for step in plan["steps"]
+            if step["skill"] == "tcl-test-sub" and step["label"] == "硬件 preflight"
+        ]
+        assert len(steps) == 1, [step["label"] for step in plan["steps"]]
+        return steps[0]
+
+    @staticmethod
+    def request_without_ports(example: str = "tcl-offline.json") -> dict:
+        request = json.loads((REPO / "examples" / example).read_text(encoding="utf-8"))
+        request["bench"].pop("ports", None)
+        return request
+
+    def test_gate_uses_request_ports_not_skill_defaults(self):
+        plan = make_plan("tcl-overnight.json")
+        step = self.hardware_preflight(plan)
+        self.assertEqual(step["n"], 5, "验收口径：通宵计划的第 5 步是硬件 preflight")
+        gate = step["gate"]
+        for port in ("COM3", "COM4", "COM6"):
+            self.assertIn(port, gate)
+        for port in ("COM20", "COM22"):
+            self.assertNotIn(port, gate, f"gate 不得出现 skill 默认端口：{port}")
+        self.assertIn("来源：bench.ports", gate)
+
+    def test_voice_test_precondition_uses_request_ports(self):
+        plan = make_plan("tcl-offline.json")
+        joined = " ".join(plan["preconditions"])
+        self.assertIn("COM3/COM4/COM6", joined)
+        self.assertNotIn("COM20", joined)
+        self.assertNotIn("COM22", joined)
+
+    def test_falls_back_to_skill_default_with_source_label(self):
+        plan = dispatch.build_plan(
+            self.request_without_ports(), REGISTRY, KB_ENTRIES, RULES, "20261107", "4af4f6d"
+        )
+        gate = self.hardware_preflight(plan)["gate"]
+        self.assertIn("COM20", gate)
+        self.assertIn("COM22", gate)
+        self.assertIn("来源：default", gate)
+        self.assertNotEqual(plan["confidence"], "high", "回落默认端口必须降置信度")
+        self.assertTrue(any("默认端口" in item for item in plan["needs_confirmation"]))
+        self.assertTrue(any("skill 默认端口" in item for item in plan["warnings"]))
+        precondition = " ".join(plan["preconditions"])
+        self.assertIn("COM20/COM22（来源：default", precondition)
+        self.assertNotIn("来源未知", precondition, "前置检查也必须按真正使用端口的 skill 查默认值")
+
+    def test_unknown_port_source_is_explicit(self):
+        rules = json.loads(json.dumps(RULES))
+        rules["port_defaults"].pop("tcl-test-sub", None)
+        plan = dispatch.build_plan(
+            self.request_without_ports(), REGISTRY, KB_ENTRIES, rules, "20261107", "4af4f6d"
+        )
+        gate = self.hardware_preflight(plan)["gate"]
+        self.assertIn("来源未知", gate)
+        self.assertTrue(any("端口来源未知" in item for item in plan["needs_confirmation"]))
+        self.assertNotEqual(plan["confidence"], "high")
+
+
+class ResetPolicy(unittest.TestCase):
+    """reset_allowed 的口径：允许复位 ≠ 调度层排一条复位步骤。"""
+
+    def test_allowed_true_declares_recovery_without_extra_step(self):
+        plan = make_plan("tcl-overnight.json")
+        policy = plan["reset_policy"]
+        self.assertTrue(policy["allowed"])
+        self.assertIn("不单独排复位步骤", policy["decision"])
+        self.assertFalse([step for step in plan["steps"] if "复位" in step["label"]])
+        channel = {item["skill"]: item for item in policy["channels"]}["tcl-test-sub"]
+        self.assertEqual(channel["command"], "uut-switch1")
+        self.assertFalse(channel["verified"], "uut-switch1 尚无真机证据，不能标已验证")
+        self.assertIn("reset_log.jsonl", channel["log"])
+        self.assertIn("实测有效", policy["requirement"])
+        self.assertTrue(any("复位通道" in item for item in plan["needs_confirmation"]))
+        self.assertNotEqual(plan["confidence"], "high", "未验证的复位通道必须要求人确认")
+
+    def test_disallowed_forbids_reset(self):
+        plan = make_plan("tcl-offline.json")
+        policy = plan["reset_policy"]
+        self.assertFalse(policy["allowed"])
+        self.assertIn("禁止复位", policy["decision"])
+        self.assertEqual(policy["channels"], [])
+
+
 class PlanContract(unittest.TestCase):
     """plan.v1 的结构契约与确定性。"""
 
@@ -210,6 +302,7 @@ class PlanContract(unittest.TestCase):
             "excluded",
             "preconditions",
             "stop_conditions",
+            "reset_policy",
             "sources",
         ):
             self.assertIn(key, plan)

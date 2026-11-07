@@ -42,3 +42,11 @@
 - **ark-dispatch 自身尚未登记进 `ark-kb/registry/skills.json`**：它是新增的第 36 个 skill，需要单独一批台账更新（含 `layer: orchestration`、依赖 `ark-kb`），避免和已验收的 35 条混改。
 - **调用模板只覆盖本版核对过的 skill**：`usb-tree` / `listenai-play` / `tcl-test-sub` / `lstts` / `mideaSmoke` / `cskflashtest` / `lstest` / `melotts`。其余 skill 走台账入口并标 `cmd_verified: false`。
 - **v1 不选报告 skill**：`generate-html-report` 是写作规范、没有生成脚本，任务出现"报告"时进 `standards`。
+
+## NOAH-20 修订（2026-11-07）
+
+- **缺陷**：第 5 步硬件 preflight 的 gate 写死 `tcl-test-sub` 默认端口 `COM20/COM22`，而请求与真实台架是 `COM3/COM4/COM6`；执行方会去开不存在的口。
+- **修法**：gate/precheck 端口改用 `{effective_ports}` 渲染：请求 `bench.ports` 优先 → `routing.port_defaults` 兜底 → 显式“来源未知”；回落默认值或来源未知都会降 `medium` 并进 `needs_confirmation`。请求给了端口时 gate 不得出现 skill 默认端口。
+- **复位口径**：新增 `plan.v1.reset_policy`（见 `references/plan-schema.md` §6）。`reset_allowed=true` 不生成独立复位步骤；`uut-switch1` 标 `verified: false`，只登记并降 `medium`。
+- **台账**：`tcl-test-sub` 按现场证据（win009 台架 TCL 项目仍在交付）由 `legacy` 改回 `active`，变更在 `ark-kb` 独立提交。
+- **测试**：46 条全绿（新增 `GatePorts` 4 条、`ResetPolicy` 2 条）；担保对象是“计划格式与选型”，不是真机结果。

@@ -19,7 +19,7 @@
 | `bench.text_file` | string | 待合成文本文件（melotts 等离线合成） |
 | `constraints.hours` | number | 计划时长；≥6 或 `overnight` 触发长跑模式 |
 | `constraints.overnight` | boolean | 通宵；触发停止条件与巡检项 |
-| `constraints.reset_allowed` | boolean | 是否允许复位；只影响前置检查与回滚描述，计划本身不执行复位 |
+| `constraints.reset_allowed` | boolean | 是否允许复位；只影响复位口径与证据要求，计划本身不执行复位，也不单独排复位步骤 |
 
 未知字段会被忽略，不做猜测性解释。
 
@@ -52,6 +52,13 @@
   "standards": ["trails：……", "skill-creator：……"],
   "runtime_notes": ["lstest：由 cskflashtest 依赖，作为运行时/共享包使用，不单独执行"],
   "excluded": [{"skill": "mideaSmoke", "reason": "projects=['CSK6012-midea-smoke'] 与任务项目 tcl 不匹配……"}],
+  "reset_policy": {
+    "allowed": true,
+    "decision": "允许复位，但不单独排复位步骤",
+    "reason": "复位属于被选中 skill 的恢复动作，调度层不执行，也不生成独立复位步骤",
+    "requirement": "复位命令必须先在本台架实测有效并留下证据；未验证的命令不得当作自动恢复手段",
+    "channels": [{"skill": "tcl-test-sub", "command": "uut-switch1", "verified": false, "log": "reset_log.jsonl", "note": "…"}]
+  },
   "preconditions": ["..."],
   "stop_conditions": ["..."],
   "patrol": ["..."],
@@ -75,6 +82,7 @@
 | `steps[].basis` | 每条至少一个 `registry:` / `kb:` / `routing:` 引用，便于复核 |
 | `excluded[].reason` | 非空；必须能指出台账字段或知识条目 |
 | `steps[].n` | 从 1 连续编号 |
+| `reset_policy` | 对象：`allowed` 布尔 + `decision` / `reason` / `requirement` + `channels`；`channels[].verified=false` 时必须进 `needs_confirmation` 并降置信度；`allowed=false` 时 `channels` 为空 |
 | `sources` | 至少含 `registry/skills.json@<rev>` 与 `routing:<version>` |
 
 `check` 子命令和 `tests/test_dispatch.py` 的 `ValidationGuards` 按上表拦截被篡改的计划。
@@ -87,6 +95,8 @@
 | 任务需要的能力在台账里没有可用 skill | `low` + 列出缺口 |
 | 计划没有任何可执行步骤 | `low` |
 | 选中的 skill 是 `legacy` | 最多 `medium` + 要求确认仍适用 |
+| gate 端口回落到 skill 默认值，或端口来源未知 | 最多 `medium` + 要求核对台架实际端口 |
+| 允许复位但复位通道 `verified=false` | 最多 `medium` + 要求先实测复位 |
 | 有未填占位符（缺端口/Key/时长等） | 最多 `medium` + 逐项列出缺失输入 |
 | 台架系统未知 | 最多 `medium` |
 | 知识库缺失但显式 `--allow-missing-kb` | 最多 `medium` |
@@ -108,3 +118,25 @@
 - 需要其它根目录时用 `--skills-home 'C:\Users\x\.codex\skills'` 重新生成，不要手改计划里的路径。
 - `cmd` 只描述**入口与固定输入**；轮次/时长等来自请求，语义由 skill 自己的 `SKILL.md` 定义。
 - 台账只登记入口，未登记调用模板的 skill 用 `cmd_verified: false` 标记，执行方必须先按该 skill 的 `SKILL.md` 补参数。
+
+## 6. 端口与复位口径
+
+### 端口：以请求为准，默认值必须标来源
+
+`gate` / `precheck` 里写端口时用 `{effective_ports}`，渲染优先级固定：
+
+1. 请求 `bench.ports`（含 `bench.port_roles`）→ 文案写 `（来源：bench.ports）`；
+2. 请求没给 → `routing.port_defaults.<skill>` 的 skill 默认值 → 文案写 `（来源：default，<skill> 的 skill 默认值）`，同时进 `warnings` 与 `needs_confirmation`，置信度最多 `medium`；
+3. 两者都没有 → `来源未知（请求未给 bench.ports，且未登记该 skill 的默认端口）`，进 `needs_confirmation`，置信度最多 `medium`。
+
+请求给了端口就**不再混入** skill 默认值：gate 里出现默认端口会把执行方引到不存在的串口。回归用例见 `tests/test_dispatch.py::GatePorts`。
+
+### 复位：允许 ≠ 自动恢复
+
+`constraints.reset_allowed` 只表达"允许在恢复流程中复位"，不产生独立的复位步骤：
+
+- `false`：故障即停，`reset_policy.channels` 为空，禁止任何复位/恢复动作；
+- `true`：列出被选中 skill 登记的复位通道；`verified=false` 的通道（目前 `tcl-test-sub` 的 `uut-switch1`）只登记、不自动执行，并进 `needs_confirmation`、置信度最多 `medium`；
+- 复位永远由被选中 skill 执行并写自己的 `reset_log`，调度层不碰设备。
+
+"允许复位"不是"计划会帮你复位"；执行方必须先证明通道有效，再把它当作恢复手段。

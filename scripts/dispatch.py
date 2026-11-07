@@ -51,6 +51,7 @@ PLACEHOLDER_LABELS = {
     "model": "设备型号（device.model）",
     "project": "项目名（device.project）",
     "firmware": "固件路径（device.firmware）",
+    "effective_ports": "端口与来源（bench.ports 或 skill 默认值）",
 }
 LAYER_RANK = {
     "spec": 0,
@@ -743,6 +744,40 @@ def resolve_port_roles(intent: Intent, skill_name: str, rules: dict) -> dict[str
     return mapping
 
 
+def effective_ports(intent: Intent, skill_name: str, rules: dict) -> tuple[str | None, str]:
+    """gate/前置检查里写的端口：请求优先，skill 默认值兜底，都没有则来源未知。
+
+    返回 (端口文本, 来源)，来源为 bench / default / unknown。
+    请求给了端口就绝不再混入 skill 默认值，避免执行方去开不存在的口。
+    """
+    if intent.ports:
+        return "/".join(intent.ports), "bench"
+    defaults = rules.get("port_defaults", {}).get(skill_name) or {}
+    ordered: list[str] = []
+    for role in rules.get("port_roles", {}).get(skill_name, []):
+        port = clean_text(defaults.get(role))
+        if port and port not in ordered:
+            ordered.append(port)
+    for port in defaults.values():
+        port = clean_text(port)
+        if port and port not in ordered:
+            ordered.append(port)
+    if ordered:
+        return "/".join(ordered), "default"
+    return None, "unknown"
+
+
+def port_context(intent: Intent, skill_name: str, rules: dict) -> dict[str, str]:
+    text, source = effective_ports(intent, skill_name, rules)
+    if source == "bench":
+        rendered = f"{text}（来源：bench.ports）"
+    elif source == "default":
+        rendered = f"{text}（来源：default，{skill_name} 的 skill 默认值）"
+    else:
+        rendered = "来源未知（请求未给 bench.ports，且未登记该 skill 的默认端口）"
+    return {"effective_ports": rendered, "port_source": source}
+
+
 def build_context(
     intent: Intent,
     skill_name: str,
@@ -754,7 +789,7 @@ def build_context(
     minutes = int(intent.hours * 60) if intent.hours else 30
     ports_text = ", ".join(intent.ports) if intent.ports else None
     port_map = resolve_port_roles(intent, skill_name, rules)
-    return {
+    context = {
         "skills_home": home,
         "skill_dir": f"{home}/{skill_name}",
         "plan_id": plan_id,
@@ -774,6 +809,8 @@ def build_context(
         "firmware": intent.firmware,
         "node": intent.node,
     }
+    context.update(port_context(intent, skill_name, rules))
+    return context
 
 
 def fill(text: str, context: dict[str, str]) -> tuple[str, list[str]]:
@@ -822,10 +859,11 @@ def build_steps(
     rules: dict,
     plan_id: str,
     skills_home: str | None,
-) -> tuple[list[dict], list[str], list[str]]:
+) -> tuple[list[dict], list[str], list[str], list[str]]:
     steps: list[dict] = []
     unresolved: list[str] = []
     warnings: list[str] = []
+    port_needs: list[str] = []
     for name in ordered:
         pick = selected[name]
         templates = rules.get("steps", {}).get(name)
@@ -835,6 +873,20 @@ def build_steps(
                 f"{name} 没有登记调用模板：台账只给入口 {pick.skill.get('entry')}，步骤标记 cmd_verified=false"
             )
         context = build_context(intent, name, plan_id, skills_home, rules)
+        port_text, port_source = effective_ports(intent, name, rules)
+        uses_effective_ports = any("{effective_ports}" in json.dumps(t, ensure_ascii=False) for t in templates)
+        if uses_effective_ports and port_source == "default":
+            warnings.append(
+                f"{name} 的 gate 用了 skill 默认端口（来源：default，{port_text}）："
+                "请求未提供 bench.ports，执行前必须按台架实际端口核对，不得直接照抄"
+            )
+            port_needs.append(
+                f"台架实际端口：请求未提供 bench.ports，{name} 的 gate 回落到 skill 默认端口 {port_text}（来源：default），需核对后才能执行"
+            )
+        if uses_effective_ports and port_source == "unknown":
+            port_needs.append(
+                f"台架实际端口：请求未提供 bench.ports，台账也没有登记 {name} 的默认端口，gate 里的端口来源未知，需补齐后重新生成计划"
+            )
         for template in templates:
             when = template.get("when")
             if when == "long_run" and not intent.long_run:
@@ -876,7 +928,7 @@ def build_steps(
             )
     for index, step in enumerate(steps, 1):
         step["n"] = index
-    return steps, unresolved, warnings
+    return steps, unresolved, warnings, port_needs
 
 
 # --------------------------------------------------------------------------- #
@@ -1006,6 +1058,60 @@ def lower_confidence(current: str, candidate: str) -> str:
     return current if CONFIDENCE_RANK[current] >= CONFIDENCE_RANK[candidate] else candidate
 
 
+def preconditions_skill(ordered: list[str], rules: dict) -> str:
+    """共享前置检查里的端口要按“真正使用端口的 skill”解析，而不是固定第一个。
+
+    否则请求没给端口时，voice_test 的前置检查会拿 usb-tree 去查默认端口，误报“来源未知”。
+    """
+    for name in ordered:
+        templates = rules.get("steps", {}).get(name) or []
+        if any("{effective_ports}" in json.dumps(t, ensure_ascii=False) for t in templates):
+            return name
+    return ordered[0] if ordered else "usb-tree"
+
+
+def build_reset_policy(intent: Intent, ordered: list[str], rules: dict) -> dict:
+    """reset_allowed 的口径：调度层不执行复位，也不排独立复位步骤。
+
+    - 复位是恢复动作，属于被选中 skill 的职责；调度层只声明允许/禁止与证据要求。
+    - 复位命令必须先在台架实测有效；未验证的命令（如 tcl-test-sub 的 uut-switch1）只登记、不自动执行。
+    """
+    channels: list[dict] = []
+    if intent.reset_allowed:
+        for name in ordered:
+            entry = (rules.get("reset_channels") or {}).get(name)
+            if not entry:
+                continue
+            channels.append(
+                {
+                    "skill": name,
+                    "command": entry.get("command"),
+                    "verified": bool(entry.get("verified", False)),
+                    "log": entry.get("log"),
+                    "note": entry.get("note"),
+                }
+            )
+        decision = "允许复位，但不单独排复位步骤"
+        reason = (
+            "constraints.reset_allowed=true：允许在 sticky failure 或明确恢复流程中复位；"
+            "复位属于被选中 skill 的恢复动作，调度层不执行，也不生成独立复位步骤"
+        )
+        requirement = "复位命令必须先在本台架实测有效并留下证据；未验证的命令不得当作自动恢复手段"
+        if not channels:
+            requirement += "；当前选中的 skill 未登记复位通道，执行前须先确认人工复位方式"
+    else:
+        decision = "禁止复位"
+        reason = "constraints.reset_allowed=false：故障即停，不执行任何复位/恢复动作"
+        requirement = "保持现场并保留证据；不得用复位掩盖失败"
+    return {
+        "allowed": intent.reset_allowed,
+        "decision": decision,
+        "reason": reason,
+        "requirement": requirement,
+        "channels": channels,
+    }
+
+
 def build_plan(
     request: dict,
     registry: list[dict],
@@ -1051,11 +1157,28 @@ def build_plan(
 
     plan_id = plan_id_for(intent, plan_date)
     ordered = order_selected(selected, rules)
-    steps, unresolved, step_warnings = build_steps(ordered, selected, intent, rules, plan_id, skills_home)
+    steps, unresolved, step_warnings, port_needs = build_steps(ordered, selected, intent, rules, plan_id, skills_home)
     warnings.extend(step_warnings)
     for key in unresolved:
         label = PLACEHOLDER_LABELS.get(key, key)
         needs.append(f"缺少输入：{label}；计划中对应位置以 <未提供:{key}> 标记，补齐后才能执行")
+        confidence = lower_confidence(confidence, "medium")
+    for note in port_needs:
+        if note not in needs:
+            needs.append(note)
+    if port_needs:
+        confidence = lower_confidence(confidence, "medium")
+
+    reset_policy = build_reset_policy(intent, ordered, rules)
+    for channel in reset_policy["channels"]:
+        if channel["verified"]:
+            continue
+        note = (
+            f"复位通道 {channel['command']}（{channel['skill']}）未验证：reset_allowed=true 只表示允许复位，"
+            f"执行前须先在台架实测有效并写 {channel['log']}"
+        )
+        if note not in needs:
+            needs.append(note)
         confidence = lower_confidence(confidence, "medium")
 
     if not steps:
@@ -1063,7 +1186,7 @@ def build_plan(
         needs.append("本轮没有任何可执行步骤：需确认任务意图或补充设备信息")
 
     preconditions: list[str] = []
-    context = build_context(intent, ordered[0] if ordered else "usb-tree", plan_id, skills_home, rules)
+    context = build_context(intent, preconditions_skill(ordered, rules), plan_id, skills_home, rules)
     for role in intent.roles:
         for template in rules.get("preconditions", {}).get(role, []):
             text, _ = fill(template, context)
@@ -1150,6 +1273,7 @@ def build_plan(
             "long_run": intent.long_run,
         },
         "steps": steps,
+        "reset_policy": reset_policy,
         "standards": standards,
         "runtime_notes": runtime_notes,
         "excluded": excluded,
@@ -1192,6 +1316,14 @@ def validate_plan(plan: dict, registry: list[dict], rules: dict) -> list[str]:
         problems.append("confidence: low 时必须列出 needs_confirmation")
     if not plan.get("sources"):
         problems.append("sources 不能为空")
+    reset = plan.get("reset_policy")
+    if reset is not None:
+        if not isinstance(reset, dict) or not isinstance(reset.get("allowed"), bool):
+            problems.append("reset_policy 必须是对象且含 allowed:boolean")
+        else:
+            for channel in reset.get("channels") or []:
+                if channel.get("skill") not in by_name:
+                    problems.append(f"reset_policy 里的 skill {channel.get('skill')} 不在台账中")
     for index, step in enumerate(steps, 1):
         if step.get("n") != index:
             problems.append(f"第 {index} 步 n 不连续")
@@ -1272,6 +1404,24 @@ def check_rules(rules: dict, registry: list[dict]) -> list[str]:
             problems.append(f"port_roles 的 {name} 不在台账中")
         if not roles:
             problems.append(f"port_roles.{name} 为空")
+    for name, defaults in (rules.get("port_defaults") or {}).items():
+        if name not in by_name:
+            problems.append(f"port_defaults 的 {name} 不在台账中")
+        if not defaults:
+            problems.append(f"port_defaults.{name} 为空")
+        roles = rules.get("port_roles", {}).get(name) or []
+        for role, port in defaults.items():
+            if not str(port or "").strip():
+                problems.append(f"port_defaults.{name}.{role} 为空")
+            if role not in roles:
+                problems.append(f"port_defaults.{name}.{role} 不在 port_roles.{name} 里")
+    for name, entry in (rules.get("reset_channels") or {}).items():
+        if name not in by_name:
+            problems.append(f"reset_channels 的 {name} 不在台账中")
+        if not str(entry.get("command") or "").strip():
+            problems.append(f"reset_channels.{name} 缺 command")
+        if not isinstance(entry.get("verified"), bool):
+            problems.append(f"reset_channels.{name}.verified 必须是布尔值")
     for signal, advisory in (rules.get("advisory_signals") or {}).items():
         if advisory.get("skill") not in by_name:
             problems.append(f"advisory_signals.{signal} 的 skill 不在台账中")
@@ -1302,6 +1452,17 @@ def render_text(plan: dict) -> str:
         lines.append("排除（可复核）：")
         for item in plan["excluded"]:
             lines.append(f"  - {item['skill']}: {item['reason']}")
+    reset = plan.get("reset_policy")
+    if reset:
+        lines.append("")
+        lines.append(f"复位口径：{reset.get('decision')}（reset_allowed={str(reset.get('allowed')).lower()}）")
+        lines.append(f"  - {reset.get('reason')}")
+        lines.append(f"  - 要求：{reset.get('requirement')}")
+        for channel in reset.get("channels") or []:
+            verified = "已验证" if channel.get("verified") else "未验证"
+            lines.append(
+                f"  - 通道 {channel.get('skill')}: {channel.get('command')}（{verified}，日志 {channel.get('log')}）"
+            )
     if plan.get("needs_confirmation"):
         lines.append("")
         lines.append("需要人确认：")

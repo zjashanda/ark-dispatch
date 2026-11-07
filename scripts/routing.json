@@ -168,7 +168,30 @@
       "log",
       "control",
       "flash"
+    ],
+    "tcl-test-sub": [
+      "log",
+      "control"
     ]
+  },
+  "port_defaults": {
+    "tcl-test-sub": {
+      "log": "COM20",
+      "control": "COM22"
+    },
+    "mideaSmoke": {
+      "log": "COM23",
+      "control": "COM27",
+      "flash": "COM29"
+    }
+  },
+  "reset_channels": {
+    "tcl-test-sub": {
+      "command": "uut-switch1",
+      "verified": false,
+      "log": "reset_log.jsonl",
+      "note": "目前只有该复位命令；尚未有真机验证证据，执行前须先在台架实测一次"
+    }
   },
   "dependency_steps": {
     "listenai-play": true,
@@ -201,7 +224,7 @@
       "合成产物写入 result/audio_regen/<日期>/，不覆盖 skill 内置语料"
     ],
     "voice_test": [
-      "被测设备 profile 的串口（TCL 默认 COM20/COM22 @921600）与台架实际端口一致",
+      "被测设备 profile 的串口与台架实际端口一致：{effective_ports}",
       "先跑无硬件 preflight，再跑硬件 preflight，通过后才允许正式轮次"
     ],
     "burn": [
@@ -330,7 +353,7 @@
         "precheck": [
           "设备已上电；串口未被其他程序占用"
         ],
-        "gate": "COM20/COM22 可打开、指定声卡唯一命中、复位通道状态正常",
+        "gate": "{effective_ports}全部可打开、指定声卡唯一命中、复位通道状态正常",
         "on_fail": "stop",
         "rollback": "只读检查；串口被占用时判 BLOCKED，不关闭用户程序",
         "evidence": "task.log 中的硬件 preflight 记录"
