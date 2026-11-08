@@ -1026,6 +1026,275 @@ def kb_notes(picked: list[dict]) -> list[dict]:
 
 
 # --------------------------------------------------------------------------- #
+# 知识 → 动作：第二阶段消费（trap / knowledge → 恢复步骤与针对性停止条件）
+# --------------------------------------------------------------------------- #
+
+KB_SOURCE_KB = "kb"
+KB_SOURCE_DEFAULT = "default"
+
+
+def action_text(entry: dict) -> str:
+    """匹配用的正文：标题 + claim + tags。只做 NFKC 与小写，不剥标点。
+
+    剥标点会吃掉 `algo.restart` 里的点，映射表就没法用它做锚点。
+    """
+    parts = [
+        str(entry.get("title") or ""),
+        str(entry.get("claim") or ""),
+        " ".join(str(tag) for tag in entry.get("tags") or []),
+    ]
+    return unicodedata.normalize("NFKC", " ".join(part for part in parts if part)).lower()
+
+
+def spec_matches(entry: dict, spec: dict) -> bool:
+    types = spec.get("types")
+    if types and entry.get("type") not in types:
+        return False
+    patterns = spec.get("text_any") or []
+    if not patterns:
+        return False
+    text = action_text(entry)
+    return any(re.search(pattern, text) for pattern in patterns)
+
+
+def kb_scope_linked(entry: dict, intent: Intent) -> bool:
+    """条目必须与本请求的设备/项目相关，才允许它改变执行。
+
+    scope 为空或「通用」的条目只作为事实出现在 plan.kb：别的设备的恢复手段不能
+    套到本台架上；宁可不生成动作，也不硬塞。
+    """
+    scope = entry.get("scope") or {}
+    device = norm(scope.get("device") or "")
+    project = norm(scope.get("project") or "")
+    model = norm(intent.model or "")
+    node = norm(intent.node or "")
+    if device and (device in {node, model} or device in norm(intent.task) or (model and device in model)):
+        return True
+    if project and project not in {"通用", "general", "common"}:
+        needle = norm(intent.project or "")
+        if needle and (project == needle or project in needle or needle in project):
+            return True
+    return False
+
+
+def kb_action_pool(entries: list[dict], intent: Intent, rules: dict) -> list[dict]:
+    """可用来改变执行的条目池：与本请求相关 + 相关度 > 0，按相关度降序。
+
+    不局限在 Top 5：Top 5 是「写进 plan.kb 的篇幅上限」，而一条只被恢复/停止规则
+    引用的条目也必须能被找到，否则最值钱的 trap 会被注入上限挤掉。
+    """
+    scored = []
+    for entry in entries:
+        score = kb_relevance(entry, intent, rules)
+        if score <= 0:
+            continue
+        if not kb_scope_linked(entry, intent):
+            continue
+        scored.append((score, entry))
+    scored.sort(key=lambda item: (-item[0], item[1]["id"]))
+    return [entry for _, entry in scored]
+
+
+def extract_recovery_command(entry: dict, spec: dict) -> str | None:
+    pattern = spec.get("command_regex")
+    if not pattern:
+        return None
+    match = re.search(pattern, action_text(entry))
+    if not match:
+        return None
+    return clean_text(match.group(1))
+
+
+def primary_port(intent: Intent, skill_name: str, port_role: str, rules: dict) -> tuple[str | None, str]:
+    """恢复步骤要写具体端口：请求优先，skill 默认值兜底，都没有就不生成动作。"""
+    explicit = resolve_port_roles(intent, skill_name, rules).get(port_role)
+    if explicit:
+        return explicit, "bench"
+    defaults = rules.get("port_defaults", {}).get(skill_name) or {}
+    fallback = clean_text(defaults.get(port_role))
+    if fallback:
+        return fallback, "default"
+    return None, "unknown"
+
+
+def build_recovery(
+    intent: Intent,
+    pool: list[dict],
+    selected: dict[str, Pick],
+    rules: dict,
+    plan_id: str,
+    skills_home: str | None,
+) -> tuple[list[dict], list[str], list[str], list[str]]:
+    """把条目里的恢复手段映射成 recovery 步骤。
+
+    返回 (recovery, warnings, needs_confirmation, commands)。
+    映射不到具体命令、端口或已选中 skill 的，就不生成步骤——空动作比没动作更危险。
+    """
+    specs = (rules.get("kb_actions") or {}).get("recovery") or []
+    recovery: list[dict] = []
+    warnings: list[str] = []
+    needs: list[str] = []
+    commands: list[str] = []
+    if not specs:
+        return recovery, warnings, needs, commands
+    matched_specs = [
+        (spec, [entry for entry in pool if spec_matches(entry, spec.get("match") or {})]) for spec in specs
+    ]
+    matched_specs = [(spec, entries) for spec, entries in matched_specs if entries]
+    if not matched_specs:
+        return recovery, warnings, needs, commands
+    if not intent.reset_allowed:
+        warnings.append(
+            "reset_allowed=false：知识库里有恢复手段，但本次禁止任何恢复/复位动作，recovery 为空（故障即停）"
+        )
+        return recovery, warnings, needs, commands
+
+    seen_commands: set[str] = set()
+    for spec, entries in matched_specs:
+        skill_name = spec.get("skill")
+        if skill_name not in selected:
+            warnings.append(
+                f"知识条目给出的恢复手段（{spec.get('id')}）要由 {skill_name} 执行，但本轮没有选中它：不生成恢复步骤"
+            )
+            continue
+        port_role = spec.get("port_role")
+        port, port_source = primary_port(intent, skill_name, port_role, rules)
+        if not port:
+            warnings.append(
+                f"恢复手段（{spec.get('id')}）缺少 {port_role} 口：请求未给 bench.ports，{skill_name} 也没有登记默认端口"
+            )
+            needs.append(
+                f"恢复步骤缺少 {port_role} 口：请求未提供 bench.ports 且 {skill_name} 未登记默认端口，本轮不生成恢复动作"
+            )
+            continue
+        groups: dict[str, tuple[str, list[dict]]] = {}
+        for entry in entries:
+            command = extract_recovery_command(entry, spec)
+            if not command:
+                continue
+            key = norm(command)
+            if key in seen_commands:
+                continue
+            groups.setdefault(key, (command, []))[1].append(entry)
+        for command, group_entries in groups.values():
+            key = norm(command)
+            if key in seen_commands:
+                continue
+            seen_commands.add(key)
+            primary = group_entries[0]
+            basis = f"kb:{primary['id']}"
+            context = build_context(intent, skill_name, plan_id, skills_home, rules)
+            context.update(
+                {
+                    "port": port,
+                    "baud": str(spec.get("baud") or 115200),
+                    "command": command,
+                    "port_source": "来源：bench.ports" if port_source == "bench" else "来源：skill 默认值，执行前必须核对",
+                }
+            )
+            item = {
+                "n": f"R{len(recovery) + 1}",
+                "action": spec.get("id"),
+                "skill": skill_name,
+                "label": fill(spec.get("label", ""), context)[0],
+                "why": f"{primary.get('title')}：{snippet(primary.get('claim'))}（{basis}）",
+                "cmd": fill(spec.get("cmd", ""), context)[0],
+                "port": port,
+                "port_source": port_source,
+                "precheck": [fill(text, context)[0] for text in spec.get("precheck") or []],
+                "gate": fill(spec.get("gate", ""), context)[0],
+                "after_fail": fill(spec.get("after_fail", ""), context)[0],
+                "verify": fill(spec.get("verify", ""), context)[0],
+                "record": spec.get("record"),
+                "basis": basis,
+                "supporting": [f"kb:{entry['id']}" for entry in group_entries[1:]],
+                "cmd_verified": False,
+            }
+            recovery.append(item)
+            commands.append(command)
+            if port_source == "default":
+                warnings.append(
+                    f"恢复步骤 R{item['n'][1:]} 使用 {skill_name} 的默认端口 {port}（来源：default）：执行前必须按台架实际端口核对"
+                )
+                needs.append(
+                    f"恢复步骤 R{item['n'][1:]} 的端口来自 skill 默认值（{port}），需核对台架实际 {port_role} 口后才能执行"
+                )
+            warnings.append(
+                f"恢复步骤 R{item['n'][1:]} 的发送方式未在真机验证过（cmd_verified=false）：执行前按 {skill_name} 的串口约定确认"
+            )
+    return recovery, warnings, needs, commands
+
+
+def build_stop_rules(
+    pool: list[dict],
+    rules: dict,
+    recovery_commands: list[str],
+) -> list[dict]:
+    """把「崩溃规律」映射成针对性停止条件。
+
+    - source=kb：规则来自条目自己说出的规律（轮次聚集 / 同一签名 / 恢复手段失效）；
+    - source=default：routing 默认检测器，只因条目证明该设备有崩溃史才装上，
+      basis 指向激活它的条目——所以没有知识库时 stop_rules 必然为空。
+    """
+    config = (rules.get("kb_actions") or {}).get("stop_rules") or {}
+    found: dict[str, dict] = {}
+
+    def add(rule_text: str, entry: dict, source: str, why: str, spec_id: str | None) -> None:
+        current = found.get(rule_text)
+        if current is not None:
+            if current["source"] == KB_SOURCE_KB or source != KB_SOURCE_KB:
+                return
+            # 条目自己说出的规律比默认检测器更有依据：原地升级出处
+            current.update({"basis": f"kb:{entry['id']}", "source": source, "why": why, "id": spec_id})
+            return
+        found[rule_text] = {
+            "id": spec_id,
+            "rule": rule_text,
+            "basis": f"kb:{entry['id']}",
+            "source": source,
+            "why": why,
+        }
+
+    for spec in config.get("kb") or []:
+        for entry in pool:
+            if not spec_matches(entry, spec):
+                continue
+            rule_text = spec.get("rule") or ""
+            if not rule_text:
+                continue
+            if spec.get("needs_recovery") and not recovery_commands:
+                continue
+            if "{command}" in rule_text:
+                if not recovery_commands:
+                    continue
+                rule_text = rule_text.replace("{command}", recovery_commands[0])
+            add(
+                rule_text,
+                entry,
+                KB_SOURCE_KB,
+                f"kb:{entry['id']}：{snippet(entry.get('claim'))}",
+                spec.get("id"),
+            )
+
+    crash_history = config.get("crash_history") or {}
+    crash_entries = [entry for entry in pool if spec_matches(entry, crash_history)]
+    if crash_entries:
+        primary = crash_entries[0]
+        for spec in config.get("default") or []:
+            rule_text = spec.get("rule") or ""
+            if not rule_text:
+                continue
+            add(
+                rule_text,
+                primary,
+                KB_SOURCE_DEFAULT,
+                f"kb:{primary['id']} 记录该设备有崩溃史，安装默认止损检测器",
+                spec.get("id"),
+            )
+    return list(found.values())
+
+
+# --------------------------------------------------------------------------- #
 # 计划装配
 # --------------------------------------------------------------------------- #
 
@@ -1185,6 +1454,18 @@ def build_plan(
         confidence = "low"
         needs.append("本轮没有任何可执行步骤：需确认任务意图或补充设备信息")
 
+    # 第二阶段消费：把 trap/knowledge 里的恢复手段与崩溃规律变成可执行动作。
+    action_pool = kb_action_pool(kb_entries, intent, rules)
+    recovery, recovery_warnings, recovery_needs, recovery_commands = build_recovery(
+        intent, action_pool, selected, rules, plan_id, skills_home
+    )
+    warnings.extend(recovery_warnings)
+    for note in recovery_needs:
+        if note not in needs:
+            needs.append(note)
+        confidence = lower_confidence(confidence, "medium")
+    stop_rules = build_stop_rules(action_pool, rules, recovery_commands)
+
     preconditions: list[str] = []
     context = build_context(intent, preconditions_skill(ordered, rules), plan_id, skills_home, rules)
     for role in intent.roles:
@@ -1227,6 +1508,8 @@ def build_plan(
         referenced.update(re.findall(r"kb:([A-Za-z0-9_.-]+)", " ".join(step.get("basis") or [])))
     for item in excluded:
         referenced.update(re.findall(r"kb:([A-Za-z0-9_.-]+)", item.get("reason") or ""))
+    for block in (recovery, stop_rules):
+        referenced.update(re.findall(r"kb:([A-Za-z0-9_.-]+)", json.dumps(block, ensure_ascii=False)))
     known_ids = {note["id"] for note in notes}
     for entry in kb_entries:
         if entry["id"] in referenced and entry["id"] not in known_ids:
@@ -1279,6 +1562,8 @@ def build_plan(
         "excluded": excluded,
         "preconditions": preconditions,
         "stop_conditions": stop_conditions,
+        "stop_rules": stop_rules,
+        "recovery": recovery,
         "patrol": patrol,
         "kb": notes,
         "sources": sources,
@@ -1288,6 +1573,7 @@ def build_plan(
             "cmd 字段按 skill 安装根目录 $HOME/.codex/skills/<skill> 书写（Windows PowerShell 5.1 与 Linux bash 通用）；实际路径不同时用 --skills-home 重新生成",
             "台账只登记入口，未登记调用模板的 skill 会标记 cmd_verified=false，执行前必须按其 SKILL.md 确认参数",
             "代码测试通过不等于真机验证通过：执行方必须自己跑 preflight 并留下证据",
+            "recovery 步骤同样由被选中 skill 执行：调度层只给命令、出处与失败退出点，不代发串口",
         ],
     }
     return plan
@@ -1350,6 +1636,42 @@ def validate_plan(plan: dict, registry: list[dict], rules: dict) -> list[str]:
             problems.append(f"excluded 里的 {item.get('skill')} 没有理由")
         if item.get("skill") not in by_name:
             problems.append(f"excluded 里的 {item.get('skill')} 不在台账中")
+    sources = set(plan.get("sources") or [])
+    for index, item in enumerate(plan.get("recovery") or [], 1):
+        if str(item.get("n") or "") != f"R{index}":
+            problems.append(f"recovery 第 {index} 条的 n 必须是 R{index}")
+        skill_name = item.get("skill")
+        if skill_name not in by_name:
+            problems.append(f"recovery 第 {index} 条的 skill {skill_name} 不在台账中")
+        else:
+            skill = by_name[skill_name]
+            if skill.get("status") == "archived":
+                problems.append(f"recovery 第 {index} 条选了 archived skill {skill_name}")
+            if (skill.get("entry") or "").endswith(".md"):
+                problems.append(f"recovery 第 {index} 条的 {skill_name} 只有规范文档（entry 是 .md），不能执行恢复动作")
+        for key in ("cmd", "why", "gate", "after_fail", "record"):
+            if not str(item.get(key) or "").strip():
+                problems.append(f"recovery 第 {index} 条缺 {key}")
+        basis = str(item.get("basis") or "")
+        if not basis.startswith("kb:"):
+            problems.append(f"recovery 第 {index} 条必须以 kb: 条目为出处（basis 现在是 {basis!r}）")
+        elif basis not in sources:
+            problems.append(f"recovery 第 {index} 条的出处 {basis} 不在 sources 中")
+        for extra in item.get("supporting") or []:
+            if not str(extra).startswith("kb:") or extra not in sources:
+                problems.append(f"recovery 第 {index} 条的 supporting 出处 {extra} 不合法或不在 sources 中")
+        if item.get("port_source") == "default" and not any("默认" in str(note) for note in plan.get("needs_confirmation") or []):
+            problems.append(f"recovery 第 {index} 条用了 skill 默认端口，但 needs_confirmation 里没有要求核对")
+    for index, item in enumerate(plan.get("stop_rules") or [], 1):
+        if not str(item.get("rule") or "").strip():
+            problems.append(f"stop_rules 第 {index} 条缺 rule")
+        if item.get("source") not in {KB_SOURCE_KB, KB_SOURCE_DEFAULT}:
+            problems.append(f"stop_rules 第 {index} 条的 source {item.get('source')!r} 必须是 kb 或 default")
+        basis = str(item.get("basis") or "")
+        if not basis.startswith("kb:"):
+            problems.append(f"stop_rules 第 {index} 条必须以 kb: 条目为出处（basis 现在是 {basis!r}）")
+        elif basis not in sources:
+            problems.append(f"stop_rules 第 {index} 条的出处 {basis} 不在 sources 中")
     return problems
 
 
@@ -1425,6 +1747,67 @@ def check_rules(rules: dict, registry: list[dict]) -> list[str]:
     for signal, advisory in (rules.get("advisory_signals") or {}).items():
         if advisory.get("skill") not in by_name:
             problems.append(f"advisory_signals.{signal} 的 skill 不在台账中")
+    kb_actions = rules.get("kb_actions") or {}
+    recovery_ids = set()
+    for spec in kb_actions.get("recovery") or []:
+        spec_id = spec.get("id")
+        if not spec_id:
+            problems.append("kb_actions.recovery 有一条缺 id")
+            spec_id = "?"
+        elif spec_id in recovery_ids:
+            problems.append(f"kb_actions.recovery 的 id {spec_id} 重复")
+        recovery_ids.add(spec_id)
+        skill_name = spec.get("skill")
+        if skill_name not in by_name:
+            problems.append(f"kb_actions.recovery.{spec_id} 的 skill {skill_name} 不在台账中")
+        elif spec.get("port_role") not in (rules.get("port_roles", {}).get(skill_name) or []):
+            problems.append(
+                f"kb_actions.recovery.{spec_id} 的 port_role {spec.get('port_role')} 不在 port_roles.{skill_name} 里"
+            )
+        for key in ("label", "cmd", "gate", "after_fail", "verify", "record"):
+            if not str(spec.get(key) or "").strip():
+                problems.append(f"kb_actions.recovery.{spec_id} 缺 {key}")
+        try:
+            re.compile(spec.get("command_regex") or "")
+        except re.error as exc:
+            problems.append(f"kb_actions.recovery.{spec_id} 的 command_regex 不合法: {exc}")
+        match_spec = spec.get("match") or {}
+        if not match_spec.get("text_any"):
+            problems.append(f"kb_actions.recovery.{spec_id} 的 match 缺 text_any（没有匹配条件就永远不生效）")
+        for pattern in match_spec.get("text_any") or []:
+            try:
+                re.compile(pattern)
+            except re.error as exc:
+                problems.append(f"kb_actions.recovery.{spec_id} 的 match 匹配式 {pattern} 不合法: {exc}")
+    stop_cfg = kb_actions.get("stop_rules") or {}
+    crash_spec = stop_cfg.get("crash_history") or {}
+    if not crash_spec.get("text_any"):
+        problems.append("kb_actions.stop_rules.crash_history 缺 text_any（默认检测器就没有激活条件）")
+    for kind in ("kb", "default"):
+        seen: set[str] = set()
+        for spec in stop_cfg.get(kind) or []:
+            spec_id = spec.get("id")
+            if not spec_id:
+                problems.append(f"kb_actions.stop_rules.{kind} 有一条缺 id")
+            elif spec_id in seen:
+                problems.append(f"kb_actions.stop_rules.{kind} 的 id {spec_id} 重复")
+            seen.add(spec_id)
+            if not str(spec.get("rule") or "").strip():
+                problems.append(f"kb_actions.stop_rules.{kind}.{spec_id} 缺 rule")
+            if kind == "kb":
+                patterns = spec.get("text_any") or []
+                if not patterns:
+                    problems.append(f"kb_actions.stop_rules.kb.{spec_id} 缺 text_any（没有匹配条件就永远不生效）")
+                for pattern in patterns:
+                    try:
+                        re.compile(pattern)
+                    except re.error as exc:
+                        problems.append(f"kb_actions.stop_rules.kb.{spec_id} 的匹配式 {pattern} 不合法: {exc}")
+    for pattern in crash_spec.get("text_any") or []:
+        try:
+            re.compile(pattern)
+        except re.error as exc:
+            problems.append(f"kb_actions.stop_rules.crash_history 的匹配式 {pattern} 不合法: {exc}")
     for role in rules.get("roles") or {}:
         if not any(matched_role_keywords(skill, role, rules) for skill in registry):
             problems.append(f"角色 {role} 在台账里没有任何 skill 命中，规则不可用")
@@ -1468,6 +1851,20 @@ def render_text(plan: dict) -> str:
         lines.append("需要人确认：")
         for item in plan["needs_confirmation"]:
             lines.append(f"  - {item}")
+    if plan.get("recovery"):
+        lines.append("")
+        lines.append("恢复预案（来自知识库）：")
+        for item in plan["recovery"]:
+            lines.append(f"  {item['n']}. {item['skill']} · {item['label']}（{item['basis']}）")
+            lines.append(f"     cmd: {item['cmd']}")
+            lines.append(f"     gate: {item['gate']}")
+            lines.append(f"     失败后: {item['after_fail']}")
+            lines.append(f"     记账: {item['record']}")
+    if plan.get("stop_rules"):
+        lines.append("")
+        lines.append("针对性停止条件（来自知识库）：")
+        for item in plan["stop_rules"]:
+            lines.append(f"  - [{item['source']}] {item['rule']}（{item['basis']}）")
     if plan.get("warnings"):
         lines.append("")
         lines.append("告警：")

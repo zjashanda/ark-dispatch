@@ -50,3 +50,39 @@
 - **复位口径**：新增 `plan.v1.reset_policy`（见 `references/plan-schema.md` §6）。`reset_allowed=true` 不生成独立复位步骤；`uut-switch1` 标 `verified: false`，只登记并降 `medium`。
 - **台账**：`tcl-test-sub` 按现场证据（win009 台架 TCL 项目仍在交付）由 `legacy` 改回 `active`，变更在 `ark-kb` 独立提交。
 - **测试**：46 条全绿（新增 `GatePorts` 4 条、`ResetPolicy` 2 条）；担保对象是“计划格式与选型”，不是真机结果。
+
+## NOAH-27 修订（2026-11-08）：知识的第二阶段消费
+
+**动机**：NOAH-22 实测证明"回执入库 → 检索命中 → 进计划"已通，但只有 `precheck` 类改变了计划（+1 条前置检查）；`trap` / `knowledge` 只挂在 `kb` 字段，没有变成恢复步骤或针对性停止条件——知识被存下来，但没改变执行。
+
+### 改了什么
+
+| 项 | 内容 |
+|---|---|
+| `plan.v1` 扩展 | 新增 `recovery[]` 与 `stop_rules[]`；`stop_conditions` / `preconditions` / `steps` 等旧字段**逐字不变**（`KbTrapBecomesActions::test_legacy_fields_are_untouched`） |
+| 映射表 | `routing.json.kb_actions`：`recovery[]`（命令 + 执行 skill + 端口角色 + 波特率 + precheck/gate/after_fail/verify/record）、`stop_rules.{crash_history,kb,default}` |
+| 条条目池 | 与本请求设备/项目相关且相关度 > 0 的条目，**不受 Top 5 注入上限限制**；被引用的条目自动补进 `kb` 与 `sources` |
+| 出处 | 每条 `recovery` / `stop_rules` 都带 `basis: kb:<id>`，且该 id 必须在 `sources` 里（校验器强制） |
+| 校验 | `dispatch.py check` 与 `check_rules` 拦截：非 `kb:` 出处、出处不在 `sources`、`R` 编号断档、archived / `.md` skill 做恢复动作、`source` 非法、端口默认值未要求确认、映射表正则或端口角色写错 |
+
+### `source` 的口径（避免"硬塞"）
+
+- `source: kb`：规则文本来自条目自己说出的规律（固定轮次 / 同一崩溃签名 / 恢复手段失效）。
+- `source: default`：routing 默认检测器，只因条目证明"这台设备会崩"才装上，`basis` 指向激活它的条目。
+- 因此**没有知识库时 `recovery` 与 `stop_rules` 必然为空**；映射不到动作的条目只留在 `kb`，不生成空动作。
+
+### 真实知识库回归（`examples/tcl-overnight.json`，ark-kb `f925458`）
+
+| 输出 | 无 kb | 有 kb |
+|---|---|---|
+| `recovery` | `[]` | `R1`：`algo.restart 1` → `COM3@921600`，`after_fail` 两级止损，`record: reset_log.jsonl`，`basis: kb:kb-bug-241022256518`，`supporting: kb:kb-method-5a97db5bfc22` |
+| `stop_rules` | `[]` | ①同一崩溃签名 ≥5 次（kb，`kb-knowledge-0f2bab9750fc`）②恢复命令 10 秒未恢复 → 断电（kb，`kb-bug-241022256518`）③连续 3 段同轮次崩溃（default，由 `kb-run-3228baa6c3f6` 激活） |
+| `steps` / `stop_conditions` / `reset_policy` / `patrol` | 7 / 10 / 同 / 5 | 完全一致 |
+
+**诚实的边界**：真实条目里没有记录"13/14 次崩在 round 19"这条轮次分布（该结论在 NOAH-19 的评论里，不在 entry 的 claim 里）。所以真实回归里的"同轮次连崩"规则是 `source: default` 的**检测器**，basis 指向证明崩溃史的 run 回执；`source: kb` 的轮次规则只在条目自己写出轮次分布时才出现（单测 `kb-bug-fixture-round19` 覆盖该分支）。没有为了"看起来生效"把评论内容伪装成条目。
+
+### 测试
+
+`python -m unittest discover -s tests -v` → **74 条全绿**（原 46 条 + 新增 28 条：恢复步骤生成与出处、轮次规则、去重、`reset_allowed=false`、设备不符不继承、端口回落要确认、无 kb 为空、篡改拦截、映射表自检、真实知识库回归 4 条）。
+
+**仍未做真机验证**：`R1` 的发送方式标 `cmd_verified: false`；`algo.restart 1 → COM3@921600` 的有效性来自 NOAH-19 的实测记录，不由本 skill 签发。
