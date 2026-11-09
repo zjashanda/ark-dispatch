@@ -72,7 +72,7 @@ python scripts/dispatch.py plan \
 1. **抽信号**：任务文本命中哪些能力信号（唤醒/命令词、烧录、合成、播放、录音、端口…），并补上隐含依赖（语音验证 → 播报 + 端口）。
 2. **过台账门禁**：`status != archived`、`platform` 含台架系统、项目/型号匹配；`reuse: low` 的设备专用 skill 必须命中项目或型号，否则带理由剔除。
 3. **按角色竞标**：同一能力只选最贴合的一个——型号命中 > 项目命中 > 设备专用 > 通用实现；`supersedes` 明示被覆盖的旧实现。
-4. **查知识库**：按 device/project/能力取 Top 5，条目分成 `precheck` / `oracle` / `trap` / `fact`，前置检查写进计划；"统一走 lstts" 这类规范会直接影响选型并在理由里标注条目 id。
+4. **查知识库（两阶段消费）**：按 device/project/能力取 Top 5，条目分成 `precheck` / `oracle` / `trap` / `fact`；`precheck` 写进前置检查，`trap` / `knowledge` 再走一遍 `routing.json.kb_actions` 映射——条目里有恢复手段就生成 `recovery` 步骤（带 `basis: kb:<id>`、端口、记录文件），有崩溃规律就生成 `stop_rules`。"统一走 lstts" 这类规范会直接影响选型并在理由里标注条目 id；映射不到动作的条目只留在 `kb`，不生成空动作。
 5. **排序出计划**：依赖关系拓扑排序，同层按 `设备接入 → 动作 → 素材 → 执行 → 证据`；每一步写清入口命令、前置校验、门禁、失败退出点、回滚方式与证据位置。
 
 ## 硬边界
@@ -81,6 +81,8 @@ python scripts/dispatch.py plan \
 - 计划里每个 skill 必须能在台账查到且不是 `archived`；查不到不选。`check` 子命令与单测都会拦。
 - 计划里的端口必须可溯源：请求 `bench.ports` 优先，其次 skill 默认值；回落默认值或来源未知时，计划降 `medium` 并要求核对，不得让执行方去开不存在的串口。
 - 调度层不执行复位：`reset_allowed=true` 只表示允许被选中 skill 在恢复流程里复位；未验证的复位命令只登记，不自动执行。
+- `recovery` 是预案不是执行：调度层只给命令、端口、门禁与失败退出点，串口由被选中 skill 自己发；`cmd_verified=false` 时执行前必须核对发送方式。
+- 知识只在两条路上改变执行：`preconditions`（前置检查）与 `recovery` / `stop_rules`（动作与止损）；映射不到的条目留在 `kb`，不生成"看起来生效"的空动作。
 - 选择理由必须可复核：命中哪个台账字段、哪条知识条目，都写在 `basis` / `excluded[].reason` / `sources` 里。
 - 没有把握就 `confidence: low` 并列出 `needs_confirmation`，不硬选；设备型号未知时尤其如此。
 - 知识库只读：不回写命中计数、不改条目、不把执行结果写进台账。
@@ -92,7 +94,7 @@ python scripts/dispatch.py plan \
 ark-dispatch/
   SKILL.md
   scripts/dispatch.py        # plan / check / rules
-  scripts/routing.json       # 能力角色、竞标与步骤模板（机器可读）
+  scripts/routing.json       # 能力角色、竞标、步骤模板、知识→动作映射表（机器可读）
   references/
     plan-schema.md           # 请求与计划的字段契约、退出码、置信度规则
     routing-rules.md         # 选型规则的人读解释与扩展方式
@@ -108,6 +110,6 @@ ark-dispatch/
 python -m unittest discover -s tests -v
 ```
 
-覆盖：TCL 离线唤醒、CSK6012 烧录、新语料合成、8 小时通宵、设备型号未知；另含计划篡改拦截、台账/知识库缺失失败关闭与规则完整性。全部离线，不访问真实设备与网络。
+覆盖：TCL 离线唤醒、CSK6012 烧录、新语料合成、8 小时通宵、设备型号未知；知识 → 动作（trap 生成 recovery / stop_rules、无 kb 时为空、设备不符不继承、端口回落要确认）；另含计划篡改拦截、台账/知识库缺失失败关闭与规则完整性。全部离线，不访问真实设备与网络；同级有 `ark-kb` 检出时会额外跑一组真实知识库回归。
 
 **代码测试通过 ≠ 真机验证通过**：本 skill 的测试只证明"选型与计划格式正确"，真机结论由执行方按计划跑完并留下证据后另行判定。

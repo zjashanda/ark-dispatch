@@ -193,6 +193,111 @@
       "note": "目前只有该复位命令；尚未有真机验证证据，执行前须先在台架实测一次"
     }
   },
+  "kb_actions": {
+    "version": "kb-actions.v1",
+    "note": "知识 → 动作的映射表（第二阶段消费）：只有命中映射的条目才改变执行；无法映射成动作的条目只留在 plan.kb，不生成空动作。",
+    "recovery": [
+      {
+        "id": "algo-restart",
+        "skill": "tcl-test-sub",
+        "match": {
+          "types": [
+            "bug",
+            "method",
+            "knowledge"
+          ],
+          "text_any": [
+            "algo\\.restart"
+          ]
+        },
+        "command_regex": "(algo\\.restart\\s+\\d+)",
+        "port_role": "log",
+        "baud": 921600,
+        "label": "崩溃恢复：向 {port} 发送 {command} 复位算法侧",
+        "cmd": "python -c \"import serial;s=serial.Serial('{port}',{baud},timeout=1);s.write(b'{command}\\r\\n');s.close()\"",
+        "precheck": [
+          "先写 STOP 并确认 runner 已退出：CSK 口由 runner 独占，不释放就发不出恢复命令",
+          "确认 {port} 是本台架的 CSK AP 口（{port_source}）"
+        ],
+        "gate": "命令发出后 10 秒内 {port} 重新产生字节（串口重开只是第一级证据）",
+        "after_fail": "连续 3 次 300 秒内快速崩溃 → 停止并判「当前固件不具备长稳能力」；恢复命令发出后 10 秒仍无字节 → 停止并要求人工物理断电",
+        "verify": "串口重新开口不等于功能恢复：必须再跑 1 轮 smoke 通过才算恢复，smoke 不过要单列且不得计入恢复成功",
+        "record": "reset_log.jsonl"
+      }
+    ],
+    "stop_rules": {
+      "crash_history": {
+        "types": [
+          "bug",
+          "run",
+          "method",
+          "knowledge"
+        ],
+        "text_any": [
+          "崩溃",
+          "crash",
+          "exception",
+          "重启",
+          "卡死",
+          "hang",
+          "stall"
+        ]
+      },
+      "kb": [
+        {
+          "id": "crash-round-cluster",
+          "types": [
+            "bug",
+            "knowledge"
+          ],
+          "text_any": [
+            "round\\s*\\d+",
+            "第\\s*\\d+\\s*轮",
+            "同一轮"
+          ],
+          "rule": "连续 3 段都在同一轮次崩溃 → 判设备不稳定并停止"
+        },
+        {
+          "id": "crash-signature-budget",
+          "types": [
+            "bug",
+            "knowledge"
+          ],
+          "text_any": [
+            "最后一行",
+            "末行",
+            "同一崩溃签名",
+            "签名相同",
+            "固定的崩溃签名"
+          ],
+          "rule": "同一崩溃签名出现 ≥5 次 → 停止并出崩溃分布报告"
+        },
+        {
+          "id": "recovery-ineffective",
+          "types": [
+            "bug",
+            "method",
+            "knowledge"
+          ],
+          "text_any": [
+            "algo\\.restart"
+          ],
+          "needs_recovery": true,
+          "rule": "恢复命令 {command} 发出后 10 秒内未恢复（串口无新字节或 1 轮冒烟不过）→ 停止并要求人工物理断电"
+        }
+      ],
+      "default": [
+        {
+          "id": "crash-round-cluster",
+          "rule": "连续 3 段都在同一轮次崩溃 → 判设备不稳定并停止"
+        },
+        {
+          "id": "crash-signature-budget",
+          "rule": "同一崩溃签名出现 ≥5 次 → 停止并出崩溃分布报告"
+        }
+      ]
+    }
+  },
   "dependency_steps": {
     "listenai-play": true,
     "lstts": true,

@@ -106,6 +106,23 @@
 - `precheck` 条目会以前置检查形式写进 `preconditions`；所有条目保留在 `kb` 字段（含 claim 与 id）。
 - "统一走 <skill>" 这类规范会参与竞标加分，并在获胜/落选理由里引用条目 id。
 
+### 7.1 第二阶段：`kb_actions` 把知识变成动作
+
+只把知识写进 `preconditions` 等于"存下来但没改变执行"。`routing.json.kb_actions` 定义第二层映射：
+
+| 键 | 作用 | 生成物 |
+|---|---|---|
+| `recovery[]` | 条目里出现恢复手段（如 `algo.restart 1`）且能解析出 skill/端口 | `plan.recovery`：`n` / `skill` / `cmd` / `gate` / `after_fail` / `record` / `basis: kb:<id>` |
+| `stop_rules.kb[]` | 条目自己说出崩溃规律（固定轮次、同一签名、恢复失效） | `plan.stop_rules`，`source: kb` |
+| `stop_rules.default[]` | 默认检测器，仅由 `crash_history` 命中的条目激活 | `plan.stop_rules`，`source: default` |
+
+要点：
+
+- 池子 = 与本请求设备/项目相关且相关度 > 0 的条目，**不受 Top 5 摘要上限限制**；被引用条目自动补进 `kb` 与 `sources`。
+- `reset_allowed=false` 时 `recovery` 必为空（故障即停）；skill 没被选中、端口解析不出、命令抽不出时也不生成，只写 `warnings`。
+- 设备/项目不符的条目一律不继承：TCL 的 trap 不会套到 CSK6012 台架。
+- 加新映射只需改 `kb_actions`，不要在 `dispatch.py` 里写条目 id；改完跑 `dispatch.py rules` 与单测（`KbActionRulesConsistency` 会校验 skill、端口角色与正则）。
+
 ## 8. 计划里的步骤模板（`steps`）
 
 - 每个模板固定：`phase / label / cmd / precheck / gate / on_fail / rollback / evidence`。
