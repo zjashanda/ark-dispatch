@@ -405,6 +405,46 @@ class RulesConsistency(unittest.TestCase):
             self.assertTrue(hits, f"角色 {role} 在台账里没有可用 skill")
 
 
+class EvidenceGapIsolation(unittest.TestCase):
+    """证据不全的候选条目不得进入调度依据。"""
+
+    def write_kb(self, directory, entries):
+        target = directory / "entries" / "knowledge"
+        target.mkdir(parents=True, exist_ok=True)
+        with open(target / "entries.jsonl", "w", encoding="utf-8") as handle:
+            for entry in entries:
+                handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+    def entry(self, entry_id, tags, status="pending"):
+        return {
+            "schema": "entry.v1",
+            "id": entry_id,
+            "type": "knowledge",
+            "scope": {"device": None, "project": None, "firmware": None, "platform": None},
+            "title": entry_id,
+            "claim": "占位",
+            "evidence": [],
+            "confidence": "low",
+            "status": status,
+            "tags": tags,
+            "validations": [],
+        }
+
+    def test_gap_entries_are_dropped(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.write_kb(
+                root,
+                [
+                    self.entry("kb-knowledge-gap", ["evidence-gap"]),
+                    self.entry("kb-knowledge-ok", ["台架"]),
+                ],
+            )
+            ids = [entry["id"] for entry in dispatch.load_kb(root)]
+            self.assertNotIn("kb-knowledge-gap", ids)
+            self.assertIn("kb-knowledge-ok", ids)
+
+
 class FailClosed(unittest.TestCase):
     """台账/知识库缺失或请求非法时，CLI 必须非 0 退出，不能静默继续。"""
 

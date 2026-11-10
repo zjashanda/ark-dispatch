@@ -193,6 +193,8 @@ def load_kb(path: Path | None) -> list[dict]:
                 raise DispatchError(f"{file}:{line_no} 缺 id", EXIT_ENV)
             if entry.get("status") in ("stale", "superseded"):
                 continue
+            if "evidence-gap" in (entry.get("tags") or []):
+                continue
             entries.append(entry)
     return entries
 
