@@ -141,7 +141,7 @@
     ],
     "entry": "run_aopu_combo_pressure.bat",
     "reuse": "low",
-    "scope_note": "适用设备：奥普/ARCS 离线语音（日志 COM26@921600 + 协议/门限 COM28@9600）。308 条 MP3 与词表绑定奥普词表，换型号必须换语料与日志规则；压测编排思路可借鉴。TCL 空调用 tcl-test-sub，通用真机 BDD 用 Polaris。",
+    "scope_note": "适用设备：奥普/ARCS 离线语音（日志 COM26@921600 + 协议/门限 COM28@9600）。308 条 MP3 与词表绑定奥普词表，换型号必须换语料与日志规则；压测编排思路可借鉴。TCL 空调用 tcl-test-sub，通用真机 BDD 用 lstest（原 Polaris，NOAH-54 已并入）。",
     "replaced_by": null,
     "last_verified": "2026-11-07"
   },
@@ -699,7 +699,7 @@
     ],
     "entry": "satellite/cucumber-agent-testing/scripts/run_task.py",
     "reuse": "low",
-    "scope_note": "已被 Polaris 取代，不应在新任务中使用；仅用于追溯 6 月前的用例与配置格式。注意：本仓库 frontmatter name 曾是 polaris-device-validation，与 Polaris 旧名相同，两者会装到同一目录；Polaris 已改为 name=Polaris。",
+    "scope_note": "能力已由 lstest 承接（Polaris 自身亦归 legacy），不应在新任务中使用；仅用于追溯 6 月前的用例与配置格式。注意：本仓库 frontmatter name 曾是 polaris-device-validation，与 Polaris 旧名相同，两者会装到同一目录；Polaris 已改为 name=Polaris。",
     "replaced_by": "lstest",
     "last_verified": "2026-11-07"
   },
@@ -901,7 +901,7 @@
     ],
     "entry": "scripts/tcl_test_sub.py",
     "reuse": "low",
-    "scope_note": "适用设备：TCL 双麦空调（CSK AP 日志 COM20@921600 + 上位机 COM22@921600，播报走显式 ListenAI 声卡）。词表、固件行为与断言写死 TCL；2778 条 MP3 按 TCL 词表录制，跨项目复用前需逐条核对文本与发音。奥普项目用 arcs-aopu-test，通用真机 BDD 用 Polaris。",
+    "scope_note": "适用设备：TCL 双麦空调（CSK AP 日志 COM20@921600 + 上位机 COM22@921600，播报走显式 ListenAI 声卡）。词表、固件行为与断言写死 TCL；2778 条 MP3 按 TCL 词表录制，跨项目复用前需逐条核对文本与发音。奥普项目用 arcs-aopu-test，通用真机 BDD 用 lstest（原 Polaris，NOAH-54 已并入）。",
     "replaced_by": null,
     "last_verified": "2026-11-07"
   },
@@ -1045,7 +1045,7 @@
     ],
     "entry": "scripts/burn.py",
     "reuse": "high",
-    "scope_note": "烧录唯一 canonical，取代 tcl-device-autoburn 与 burn_bundle；时间戳为毫秒精度北京墙钟（待统一裁决，见 docs/time-contract.md）。",
+    "scope_note": "烧录唯一 canonical，取代 tcl-device-autoburn 与 burn_bundle；时间戳为北京时间空格秒级 YYYY-MM-DD HH:MM:SS（R4 已裁决为方案 A，2026-11-11 生效，见 docs/time-contract.md）。",
     "replaced_by": null,
     "last_verified": "2026-11-11"
   },
