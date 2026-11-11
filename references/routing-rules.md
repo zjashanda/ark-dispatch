@@ -45,7 +45,7 @@
 | `playback` | `action` | 播报、播放、声卡端点、audio-list | `listenai-play` |
 | `synth` | `material` | 语音合成、TTS、Melo、IndexTTS、语料 | `lstts`、`melotts` |
 | `voice_test` | `execute` | 唤醒、命令识别、命令词、语音验证、离线语音、ASR、交互探测 | `tcl-test-sub`、`arcs-aopu-test`、`Trisolaris` |
-| `burn` | `execute` | 烧录、烧写 | `mideaSmoke`、`cskflashtest`、`burn_bundle` |
+| `burn` | `execute` | 烧录、烧写 | `mideaSmoke`、`cskflashtest`、`venusahisiburner` |
 | `record` | `evidence` | 录音、PCM | `omni-pickup`、`power-on-record-check` |
 | `evidence` | `evidence` | 蜂鸣、定位、证据 | `beep-locator` |
 
@@ -80,12 +80,14 @@
 | 知识库规范指定 | +12 | 例如 `kb:…` 规定"运行时合成统一走 lstts" |
 | `status: legacy` | −4 | 仍可用，但置信度降为 medium 并要求确认 |
 
-落选者写入 `excluded`，理由包含：角色名、获胜者及加分依据、本 skill 的 `scope_note` 限制。`supersedes` 明示的旧实现（如 `listenai-laid-installer` → `listenai-play`）优先给出"能力被覆盖"的理由。
+落选者写入 `excluded`，理由包含：角色名、获胜者及加分依据、本 skill 的 `scope_note` 限制。`supersedes` 明示的旧实现（如 `listenai-laid-installer` → `listenai-play`、`polaris-device-validation` → `lstest`）优先给出"能力被覆盖"的理由。
+
+`Polaris` 已归 `legacy`，能力由 `lstest` 承接（NOAH-54 parity 31/31），调度只选 `lstest`：`routing.json.supersedes` 把它的旧实现 `polaris-device-validation` 直接指向 `lstest`，不再指向 `Polaris`。`burn_bundle`、`listenai-laid-installer`、`polaris-device-validation` 均已归档或被取代，不作为 `dependency_steps` 里的"运行前必须装好的能力"。
 
 这套规则让 golden case 稳定复现：
 
 - TCL 唤醒 → `usb-tree`（端口）→ `listenai-play`（播报）→ `tcl-test-sub`（执行）；`mideaSmoke` 因只适用 CSK6012 被排除。
-- CSK6012 烧录 → `mideaSmoke` 型号命中，通用 `cskflashtest`/`burn_bundle` 让位；`tcl-test-sub` 因项目 TCL-ac 排除。
+- CSK6012 烧录 → `mideaSmoke` 型号命中，通用 `cskflashtest` 让位；`tcl-test-sub` 因项目 TCL-ac 排除。
 - 新语料 → `lstts` 命中合成角色，并引用知识条目"统一走 lstts"。
 - 通宵 → 长跑命令自动带 `--duration-minutes`，计划带停止条件与巡检项。
 - 型号未知 → 设备专用 skill 全部排除，`confidence: low` 并要求确认。
@@ -94,7 +96,7 @@
 
 - `depends_skills` 里**登记了调用模板**的依赖才加为步骤（如 `listenai-play`、`lstts`）。
 - `spec` 层依赖（`trails`、`skill-creator`）放进 `standards`：它们是规范约束，不是可执行步骤。
-- 运行时/共享包依赖（`lstest`、`burn_bundle`）放进 `runtime_notes`，避免把"框架"误当一次执行。
+- 运行时/共享包依赖（`lstest`）放进 `runtime_notes`，避免把"框架"误当一次执行；已归档或被取代的依赖不进 `dependency_steps`，直接落 `warnings`。
 - 台账里查不到、已归档或平台不符的依赖 → `warnings`，不悄悄丢掉。
 - 排序：先在已选 skill 之间按 `depends_skills` 拓扑排序；同层按阶段、台账 `layer`、名称打破平局。
 

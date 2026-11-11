@@ -1,14 +1,14 @@
 # 离线快照（tests/fixtures）
 
-这些文件是从 `zjashanda/ark-kb` 的 `main`（提交 `4af4f6d`，2026-11-06）复制的固定快照，只用于单测与本地演示：
+这些文件是从 `zjashanda/ark-kb` 的 `main`（提交 `10d3dab`，2026-11-10）复制的固定快照，只用于单测与本地演示：
 
-- `registry.skills.json` ← `ark-kb/registry/skills.json`（35 条）
+- `registry.skills.json` ← `ark-kb/registry/skills.json`（46 条，全量副本，字段顺序与源文件一致）
 - `kb/entries/{knowledge,method,run,bug}.jsonl` ← `ark-kb/entries/*/entries.jsonl`
 
 sha256：
 
 ```
-270ce59593e72a2af63f06b545eff86ae83a65b57c89e19bfe9846e39511eb87  registry.skills.json
+55b842a4bd3523354dc5423bbe025fa71b8b38d057a2f7d73f97fb29479d0c2f  registry.skills.json
 6740104642d5e995316bb43335a346ad9debcce3756fb86c1b0018a13c72e5aa  kb/entries/knowledge.jsonl
 c60b73098185c902c4a5e3b640c0f5e065b80a9ac4bdff72974a7aa63a2ff709  kb/entries/method.jsonl
 d457819845a73c88b2c6b89061482d12ab3a5b4d8f2018823365231ace9aa9c9  kb/entries/run.jsonl
