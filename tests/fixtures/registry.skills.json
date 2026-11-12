@@ -1,33 +1,5 @@
 [
   {
-    "name": "NoahsArk",
-    "repo": "zjashanda/NoahsArk",
-    "layer": "orchestration",
-    "status": "active",
-    "capability": "AI 测试平台方案与规格仓库：控制面/节点分工、会话编排、证据 manifest、租约与 C1-C7 门禁设计。",
-    "platform": [
-      "windows",
-      "linux"
-    ],
-    "projects": [
-      "通用"
-    ],
-    "hardware": [
-      "无"
-    ],
-    "depends_skills": [
-      "lstest"
-    ],
-    "depends_pkgs": [
-      "无"
-    ],
-    "entry": "docs/VERSIONING.md",
-    "reuse": "high",
-    "scope_note": "纯设计与规格，不能直接执行任何测试；README 明写后端尚未实现，落地前不能当作运行能力引用。",
-    "replaced_by": null,
-    "last_verified": "2026-11-06"
-  },
-  {
     "name": "Polaris",
     "repo": "zjashanda/Polaris",
     "layer": "capability",
@@ -988,34 +960,6 @@
     "entry": "scripts/usbTree.ps1",
     "reuse": "high",
     "scope_note": "与设备型号无关，换板卡可直接用；GUI 仅 Windows，Linux 只提供脚本/CLI。仓库内保留 .omo/ 会话残留。",
-    "replaced_by": null,
-    "last_verified": "2026-11-06"
-  },
-  {
-    "name": "zhsh",
-    "repo": "zjashanda/zhsh",
-    "layer": "orchestration",
-    "status": "active",
-    "capability": "局域网分布式 CLI 网关与任务调度：Dashboard、任务队列、PTY 终端桥接、Agent 上报硬件并执行任务、Beacon 一键接入。",
-    "platform": [
-      "windows",
-      "linux"
-    ],
-    "projects": [
-      "通用"
-    ],
-    "hardware": [
-      "无"
-    ],
-    "depends_skills": [
-      "无"
-    ],
-    "depends_pkgs": [
-      "待核验（私有仓库未采集）"
-    ],
-    "entry": "start_all.bat",
-    "reuse": "high",
-    "scope_note": "与设备型号无关，但强绑局域网与节点 Agent；换机器需重新安装 Agent/Beacon 并重新发现服务器。私有仓库，台账仅依据 README。",
     "replaced_by": null,
     "last_verified": "2026-11-06"
   },
