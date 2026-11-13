@@ -98,6 +98,7 @@ ark-dispatch/
   references/
     plan-schema.md           # 请求与计划的字段契约、退出码、置信度规则
     routing-rules.md         # 选型规则的人读解释与扩展方式
+    tts-library-orchestration.md  # 1006 TTS 共享库：先查库、miss 才合成的计划编排
   tests/
     test_dispatch.py         # 5 组 golden case + 失败关闭 + 规则完整性
     fixtures/                # 台账与知识库的固定快照（离线）
