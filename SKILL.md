@@ -21,6 +21,34 @@ description: 方舟调度：给定任务、设备与现场条件，查能力台�
 - 只是查某个 skill 的用法 → 读它自己的 `SKILL.md`。
 - 台账或知识库都没有本地快照 → 先检出 `ark-kb`，本 skill 不联网抓取。
 
+## 先读 Skill 索引（burner / lstest）
+
+选型之前必须先读索引，再按固定顺序路由；不允许从 `SKILL.md` 正文猜 profile、工具或判定阈值：
+
+```text
+capability → skill → chip → project → profile → workflow → preconditions → execute → evidence → ark-kb
+```
+
+| skill | 索引 | 能力前缀 |
+|---|---|---|
+| `burner` | `<ark>/venusahisiburner/index/index.json` | `burn.` |
+| `lstest` | `<ark>/lstest/index/index.json` | `test.` |
+
+```bash
+# 校验索引结构与引用闭合
+python scripts/route.py check --index burner=<burner>/index/index.json --index lstest=<lstest>/index/index.json
+
+# 解析一条或一条组合路由（每一步可用 #chip=..,project=.. 覆盖全局过滤）
+python scripts/route.py resolve \
+  --index burner=<burner>/index/index.json --index lstest=<lstest>/index/index.json \
+  --capability 'burn.tcl-dual-baseline#chip=venusa,project=tcl-pvm1005' \
+  --capability 'test.wake-command#chip=csk7,project=venusws63'
+```
+
+路由门禁与台账门禁是两层：`route_status=MATCHED` 但 `gate=BLOCKED_PROFILE_CONTRACT`
+表示「路由找对了、执行被 draft profile 拦住」，回执必须分开写，不得合并成 FAIL。
+细则见 [references/skill-index-routing.md](references/skill-index-routing.md)。
+
 ## 输入（dispatch.request.v1）
 
 ```json
@@ -94,13 +122,19 @@ python scripts/dispatch.py plan \
 ark-dispatch/
   SKILL.md
   scripts/dispatch.py        # plan / check / rules
+  scripts/route.py           # 索引校验与 capability→workflow 路由（只读，不执行）
   scripts/routing.json       # 能力角色、竞标、步骤模板、知识→动作映射表（机器可读）
+  schema/
+    skill-index.v1.json      # burner/lstest 索引容器结构
+    skill-route.v1.json      # 单条能力的 14 个路由字段
   references/
     plan-schema.md           # 请求与计划的字段契约、退出码、置信度规则
     routing-rules.md         # 选型规则的人读解释与扩展方式
+    skill-index-routing.md   # 先读索引的路由契约、门禁码与组合规则
     tts-library-orchestration.md  # 1006 TTS 共享库：先查库、miss 才合成的计划编排
   tests/
     test_dispatch.py         # 5 组 golden case + 失败关闭 + 规则完整性
+    test_route.py            # 索引结构校验、路由/歧义/门禁、组合链
     fixtures/                # 台账与知识库的固定快照（离线）
   examples/                  # 5 组可直接跑的任务请求
 ```

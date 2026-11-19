@@ -1,6 +1,51 @@
 {
   "version": "routing.v1",
   "note": "方舟调度的选型规则（机器可读）。人读解释见 references/routing-rules.md。所有 skill 名必须能在 registry/skills.json 找到；tests 里有一条规则完整性用例守着。",
+  "skill_index": {
+    "schema": "ark.skill-route.v1",
+    "index_schema": "ark.skill-index.v1",
+    "contract": "先读 Skill index，再按 capability -> skill -> chip -> project -> profile -> workflow 路由；禁止从 SKILL.md 正文猜 profile/工具/阈值",
+    "read_order": [
+      "index/manifest.json",
+      "index/index.json（capabilities[]）",
+      "chips[] / projects[] / profiles[]",
+      "workflows[]（entry 必须可执行）",
+      "preconditions → execute → evidence → ark-kb"
+    ],
+    "skills": {
+      "burner": {
+        "repo": "zjashanda/venusahisiburner",
+        "frontmatter_name": "venusahisiburner",
+        "manifest": "index/manifest.json",
+        "index": "index/index.json",
+        "capability_prefix": "burn."
+      },
+      "lstest": {
+        "repo": "zjashanda/lstest",
+        "frontmatter_name": "lstest",
+        "manifest": "index/manifest.json",
+        "index": "index/index.json",
+        "capability_prefix": "test."
+      }
+    },
+    "role_to_skill": {
+      "burn": "burner",
+      "voice_test": "lstest"
+    },
+    "forbidden": [
+      "新建 csk6-hisi-burner 等按芯片命名的同类顶层 Skill",
+      "把 burner 能力集成进 lstest",
+      "在 ark-kb 存放可执行脚本"
+    ],
+    "gate_codes": [
+      "BLOCKED_CAPABILITY_NOT_FOUND",
+      "BLOCKED_AMBIGUOUS_ROUTE",
+      "BLOCKED_CAPABILITY_GAP",
+      "BLOCKED_CAPABILITY",
+      "BLOCKED_UNKNOWN_PROJECT",
+      "BLOCKED_PROFILE_CONTRACT"
+    ]
+  },
   "phase_order": [
     "access",
     "action",

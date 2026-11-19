@@ -1,0 +1,87 @@
+{
+  "schema": "ark.skill-index.v1",
+  "skill": "lstest",
+  "skill_version": "1.0.0",
+  "repo": "fixture/lstest",
+  "route_schema": "ark.skill-route.v1",
+  "route_order": [
+    "capability",
+    "skill",
+    "chip",
+    "project",
+    "profile",
+    "workflow",
+    "preconditions",
+    "execute",
+    "evidence",
+    "ark-kb"
+  ],
+  "chips": [
+    {
+      "chip_id": "fixture-chip",
+      "name": "Fixture Chip"
+    }
+  ],
+  "projects": [
+    {
+      "project_id": "fixture-project",
+      "profile": "fixture-profile",
+      "profile_status": "draft",
+      "contract_mode": "draft",
+      "capabilities": [
+        "test.fixture-cap"
+      ]
+    },
+    {
+      "project_id": "fixture-formal",
+      "profile": "profiles/formal/profile.json",
+      "profile_status": "formal",
+      "contract_mode": "formal",
+      "capabilities": [
+        "test.fixture-cap"
+      ]
+    }
+  ],
+  "capabilities": [
+    {
+      "capability_id": "test.fixture-cap",
+      "skill": "lstest",
+      "module": "verification",
+      "chip": [
+        "fixture-chip"
+      ],
+      "project": [
+        "fixture-project",
+        "fixture-formal"
+      ],
+      "firmware_family": [
+        "fixture-fw"
+      ],
+      "profile": "profiles/<project>/profile.json",
+      "workflow": "wf.fixture.run",
+      "inputs": [
+        "profile"
+      ],
+      "outputs": [
+        "run.receipt.json"
+      ],
+      "preconditions": [
+        "profile measured"
+      ],
+      "evidence_schema": "fixture-receipt/v1",
+      "version": "1.0.0",
+      "status": "active"
+    }
+  ],
+  "workflows": [
+    {
+      "workflow_id": "wf.fixture.run",
+      "steps": [
+        "preflight",
+        "run"
+      ],
+      "entry": "python lstest.py preflight"
+    }
+  ],
+  "updated_at": "2026-11-19 12:00:00"
+}
