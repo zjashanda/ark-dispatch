@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/zjashanda/ark-dispatch/schema/skill-index.v1.json",
+  "title": "ark.skill-index.v1",
+  "description": "burner / lstest 的固定索引容器。index/index.json 按本 schema 组织；capabilities[] 每项遵循 ark.skill-route.v1。",
+  "type": "object",
+  "required": [
+    "schema",
+    "skill",
+    "skill_version",
+    "repo",
+    "route_schema",
+    "route_order",
+    "capabilities",
+    "chips",
+    "projects",
+    "workflows",
+    "updated_at"
+  ],
+  "properties": {
+    "schema": { "const": "ark.skill-index.v1" },
+    "skill": { "enum": ["burner", "lstest"] },
+    "skill_version": { "type": "string", "minLength": 1 },
+    "repo": { "type": "string", "minLength": 1 },
+    "route_schema": { "const": "ark.skill-route.v1" },
+    "route_order": {
+      "type": "array",
+      "minItems": 6,
+      "items": { "type": "string" },
+      "description": "固定顺序 capability -> skill -> chip -> project -> profile -> workflow ..."
+    },
+    "entry": { "type": "object" },
+    "capabilities": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "skill-route.v1.json" }
+    },
+    "chips": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["chip_id", "name"],
+        "properties": {
+          "chip_id": { "type": "string" },
+          "name": { "type": "string" }
+        }
+      }
+    },
+    "projects": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["project_id"],
+        "properties": {
+          "project_id": { "type": "string" },
+          "profile": { "type": ["string", "null"] },
+          "profile_status": { "type": "string" },
+          "contract_mode": { "type": "string" },
+          "capabilities": { "type": "array", "items": { "type": "string" } }
+        }
+      }
+    },
+    "profiles": { "type": "array" },
+    "firmware_profiles": { "type": "array" },
+    "tools": { "type": "array" },
+    "workflows": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["workflow_id", "steps"],
+        "properties": {
+          "workflow_id": { "type": "string", "pattern": "^wf\\." },
+          "steps": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+          "entry": { "type": "string" },
+          "note": { "type": "string" },
+          "status": { "type": "string" }
+        }
+      }
+    },
+    "validators": { "type": "array" },
+    "templates": { "type": "array" },
+    "compatibility": { "type": "array" },
+    "task_dir_contract": { "type": "object" },
+    "updated_at": { "type": "string" },
+    "updated_by": { "type": "string" }
+  },
+  "additionalProperties": true
+}

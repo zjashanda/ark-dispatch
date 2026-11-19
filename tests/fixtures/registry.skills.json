@@ -200,8 +200,8 @@
     ],
     "entry": "windows/run_burn.bat",
     "reuse": "high",
-    "scope_note": "纯 payload，与设备型号无关；不含项目封装脚本（run_fan_burn.*），调用方需自备 app.bin、固件与串口参数。Linux 入口为 linux/run_burn.sh。2026-11 起归档候选，资产清单由 venusahisiburner 接管。",
-    "replaced_by": "venusahisiburner",
+    "scope_note": "纯 payload，与设备型号无关；不含项目封装脚本（run_fan_burn.*），调用方需自备 app.bin、固件与串口参数。Linux 入口为 linux/run_burn.sh。2026-11 起归档候选，资产清单由 burner 接管。",
+    "replaced_by": "burner",
     "last_verified": "2026-11-06"
   },
   {
@@ -964,8 +964,8 @@
     "last_verified": "2026-11-06"
   },
   {
-    "name": "venusahisiburner",
-    "repo": "zjashanda/venusahisiburner",
+    "name": "burner",
+    "repo": "zjashanda/burner",
     "layer": "capability",
     "status": "active",
     "capability": "VenusA/CSK 与 HISI/HI3863 双芯片统一烧录状态机（preflight/boot/burn/verify/recover/receipt）+ profile 隔离 + 资产清单。",
@@ -1017,8 +1017,8 @@
     ],
     "entry": "SKILL.md",
     "reuse": "low",
-    "scope_note": "2026-11 起停用，参数映射由 venusahisiburner 的 tcl-pvm1005 profile 承担；仓库为空/私有，无法做内容级 diff，仓库本身不删。",
-    "replaced_by": "venusahisiburner",
+    "scope_note": "2026-11 起停用，参数映射由 burner 的 tcl-pvm1005 profile 承担；仓库为空/私有，无法做内容级 diff，仓库本身不删。",
+    "replaced_by": "burner",
     "last_verified": "2026-11-11"
   },
   {

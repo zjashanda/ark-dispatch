@@ -1,0 +1,106 @@
+{
+  "schema": "ark.skill-index.v1",
+  "skill": "burner",
+  "skill_version": "1.0.0",
+  "repo": "fixture/burner",
+  "route_schema": "ark.skill-route.v1",
+  "route_order": [
+    "capability",
+    "skill",
+    "chip",
+    "project",
+    "profile",
+    "workflow",
+    "preconditions",
+    "execute",
+    "evidence",
+    "ark-kb"
+  ],
+  "chips": [
+    {
+      "chip_id": "fixture-chip",
+      "name": "Fixture Chip"
+    }
+  ],
+  "projects": [
+    {
+      "project_id": "fixture-project",
+      "profile": "fixture-profile",
+      "profile_status": "measured",
+      "capabilities": [
+        "burn.fixture-cap",
+        "burn.fixture-any"
+      ]
+    }
+  ],
+  "capabilities": [
+    {
+      "capability_id": "burn.fixture-cap",
+      "skill": "burner",
+      "module": "burn",
+      "chip": [
+        "fixture-chip"
+      ],
+      "project": [
+        "fixture-project"
+      ],
+      "firmware_family": [
+        "fixture-fw"
+      ],
+      "profile": "fixture-profile",
+      "workflow": "wf.fixture.run",
+      "inputs": [
+        "profile"
+      ],
+      "outputs": [
+        "run.receipt.json"
+      ],
+      "preconditions": [
+        "profile measured"
+      ],
+      "evidence_schema": "fixture-receipt/v1",
+      "version": "1.0.0",
+      "status": "active"
+    },
+    {
+      "capability_id": "burn.fixture-any",
+      "skill": "burner",
+      "module": "burn",
+      "chip": [
+        "any"
+      ],
+      "project": [
+        "any"
+      ],
+      "firmware_family": [
+        "fixture-fw"
+      ],
+      "profile": "任意已登记 profile",
+      "workflow": "wf.fixture.run",
+      "inputs": [
+        "profile"
+      ],
+      "outputs": [
+        "run.receipt.json"
+      ],
+      "preconditions": [
+        "profile measured"
+      ],
+      "evidence_schema": "fixture-receipt/v1",
+      "version": "1.0.0",
+      "status": "active"
+    }
+  ],
+  "workflows": [
+    {
+      "workflow_id": "wf.fixture.run",
+      "steps": [
+        "preflight",
+        "burn",
+        "receipt"
+      ],
+      "entry": "python burn.py all"
+    }
+  ],
+  "updated_at": "2026-11-19 12:00:00"
+}
