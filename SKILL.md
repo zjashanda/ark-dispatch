@@ -31,7 +31,7 @@ capability → skill → chip → project → profile → workflow → precondit
 
 | skill | 索引 | 能力前缀 |
 |---|---|---|
-| `burner` | `<ark>/venusahisiburner/index/index.json` | `burn.` |
+| `burner` | `<ark>/burner/index/index.json` | `burn.` |
 | `lstest` | `<ark>/lstest/index/index.json` | `test.` |
 
 ```bash

@@ -19,7 +19,7 @@ capability → skill → chip → project → profile → workflow → precondit
 
 | skill | manifest | index | 能力前缀 |
 |---|---|---|---|
-| `burner`（repo `zjashanda/venusahisiburner`） | `index/manifest.json` | `index/index.json` | `burn.` |
+| `burner`（repo `zjashanda/burner`） | `index/manifest.json` | `index/index.json` | `burn.` |
 | `lstest`（repo `zjashanda/lstest`） | `index/manifest.json` | `index/index.json` | `test.` |
 
 每条 capability 固定 14 个字段：

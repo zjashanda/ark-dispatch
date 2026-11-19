@@ -14,8 +14,8 @@
     ],
     "skills": {
       "burner": {
-        "repo": "zjashanda/venusahisiburner",
-        "frontmatter_name": "venusahisiburner",
+        "repo": "zjashanda/burner",
+        "frontmatter_name": "burner",
         "manifest": "index/manifest.json",
         "index": "index/index.json",
         "capability_prefix": "burn."

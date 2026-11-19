@@ -45,7 +45,7 @@
 | `playback` | `action` | 播报、播放、声卡端点、audio-list | `listenai-play` |
 | `synth` | `material` | 语音合成、TTS、Melo、IndexTTS、语料 | `lstts`、`melotts` |
 | `voice_test` | `execute` | 唤醒、命令识别、命令词、语音验证、离线语音、ASR、交互探测 | `tcl-test-sub`、`arcs-aopu-test`、`Trisolaris` |
-| `burn` | `execute` | 烧录、烧写 | `mideaSmoke`、`cskflashtest`、`venusahisiburner` |
+| `burn` | `execute` | 烧录、烧写 | `mideaSmoke`、`cskflashtest`、`burner` |
 | `record` | `evidence` | 录音、PCM | `omni-pickup`、`power-on-record-check` |
 | `evidence` | `evidence` | 蜂鸣、定位、证据 | `beep-locator` |
 
